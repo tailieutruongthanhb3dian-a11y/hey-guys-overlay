@@ -116,20 +116,20 @@ Chi tiết: [`docs/WEB-COMPANION.md`](docs/WEB-COMPANION.md).
 
 <div align="center">
 
-[![Tải về cho Windows](https://img.shields.io/badge/⬇_TẢI_VỀ_CHO_WINDOWS-Hey--Guys--Overlay.zip-a855b5?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/tailieutruongthanhb3dian-a11y/hey-guys-overlay/releases/latest/download/Hey-Guys-Overlay-Windows.zip)
+[![Tải về cho Windows](https://img.shields.io/badge/⬇_TẢI_VỀ_CHO_WINDOWS-Setup.exe-a855b5?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/tailieutruongthanhb3dian-a11y/hey-guys-overlay/releases/latest/download/Hey-Guys-Overlay-Setup.exe)
 
-<sub>Không cần cài đặt · Windows 10/11 64-bit</sub>
+<sub>Cài đặt một lần · Windows 10/11 64-bit</sub>
 
 </div>
 
 1. Bấm nút **Tải về** ở trên.
-2. Chuột phải file ZIP → **Extract All…** (Giải nén tất cả) → **Extract**.
-3. Nhấp đúp `Hey-Guys-Overlay.exe` — giữ hai file `.dll` nằm cạnh.
-4. Bấm **Kết nối Steam**, đăng nhập một lần. Vào game là overlay tự hiện.
+2. Nhấp đúp `Hey-Guys-Overlay-Setup.exe` và làm theo hướng dẫn cài đặt.
+3. Mở **Hey Guys Overlay**, bấm **Kết nối Steam** và đăng nhập một lần.
+4. Vào game, overlay sẽ tự hiện.
 
 > [!WARNING]
 > Nếu Windows hiện màn hình xanh **"Windows protected your PC"**: bấm **More info** → **Run anyway**.
-> App chưa có chữ ký số nên Windows cảnh báo, không phải virus.
+> Ứng dụng chưa có chữ ký số nên Windows có thể cảnh báo. Chỉ tải bộ cài từ trang phát hành chính thức này.
 
 > [!TIP]
 > `Ctrl+K` mở bảng lệnh nhanh · `Ctrl+1…6` chuyển tab · `F5` hoặc `Ctrl+Alt+R` tải lại khi lỗi giao diện.
