@@ -33,7 +33,7 @@
   ] as const;
 </script>
 
-<div class="guide mx-auto max-w-2xl overflow-y-auto p-6 text-sm leading-relaxed">
+<div class="guide mx-auto max-w-3xl overflow-y-auto p-6 text-sm leading-relaxed">
   {#if $locale === "vi"}
     <h1>Cách dùng — điều quan trọng nhất</h1>
     <p>

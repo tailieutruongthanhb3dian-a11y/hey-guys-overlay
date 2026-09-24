@@ -7,6 +7,10 @@
   // changes together with the imageOverlay.
   import { onDestroy, onMount, untrack } from "svelte";
   import L from "leaflet";
+  import { frameBudget } from "$lib/frame-budget";
+  import { smoothWheel } from "./smooth-wheel";
+  import { eraLive } from "$lib/era-live";
+  let wheelController: ReturnType<typeof smoothWheel> | undefined;
   import "leaflet/dist/leaflet.css";
   import {
     addWaypointAtPixel,
@@ -55,6 +59,11 @@
     ZONE_STROKE_OPACITY,
   } from "$lib/theme";
   import LayerPanel from "./LayerPanel.svelte";
+  import EraSquad from "./EraSquad.svelte";
+  import TacticalTools from "./TacticalTools.svelte";
+  import { zonePoints } from "$lib/atlas-geometry";
+  import { invoke } from "@tauri-apps/api/core";
+  import { hdLayer, atlasPoint, type Anchor } from "./atlas-layer";
   import NamePrompt from "./NamePrompt.svelte";
   import { t, tNow } from "$lib/i18n";
   import { ask } from "@tauri-apps/plugin-dialog";
@@ -75,7 +84,27 @@
   let { visible = true }: { visible?: boolean } = $props();
 
   let mapEl: HTMLDivElement;
-  let map: L.Map | undefined;
+  let map = $state.raw<L.Map | undefined>(undefined);
+  let mapSource = $state("");
+  let imageLayer: L.ImageOverlay | undefined;
+  let hd: L.GridLayer | undefined;
+  let hdEnabled=$state(true);
+  async function loadAtlas(){
+    try {
+      const atlas=await invoke<any>('era_atlas');if(destroyed||!map)return;
+      const anchors=atlas.projectionAnchors as Anchor[];if(!Array.isArray(anchors)||anchors.length!==3)throw new Error('Invalid Atlas projection');
+      hd=hdLayer(anchors,()=>{if(!destroyed&&hdEnabled){hd?.remove();hdEnabled=false;imageError='Chưa tải được nền HD; đang dùng nền dự phòng.';}});if(hdEnabled)hd.addTo(map);
+      const names:Record<number,string>={24:'atlas_labels',115:'atlas_locations',26:'atlas_animals',105:'plants',25:'atlas_zones',106:'atlas_spawns'};
+      for(const key of Object.values(names))overlayGroups[key]=L.layerGroup();
+      for(const item of [...atlas.markers,...atlas.texts]){const key=names[item.category_id],u=Number(item.x),v=Number(item.y);if(!key||item.is_active===0||![u,v].every(Number.isFinite))continue;const p=atlasPoint(anchors,u,v);const label=document.createElement('span');label.textContent=String(item.label_text||item.name||item.text||'');L.circleMarker(toLatLng(p.px,p.py),{radius:3,weight:1,color:'#26342b',fillColor:key==='plants'?'#72d653':'#d9a441',fillOpacity:.9}).bindTooltip(label).addTo(overlayGroups[key]);}
+      for(const zone of atlas.zones){const key=names[zone.category_id];if(!key||zone.is_active===0)continue;try{const points=zonePoints(zone).map((p:any)=>{const pt=atlasPoint(anchors,Number(p.x),Number(p.y));return toLatLng(pt.px,pt.py);});if(points.length<2)continue;const label=document.createElement('span');label.textContent=String(zone.name||'');const options={color:/^#[a-f\d]{6}$/i.test(zone.stroke_color)?zone.stroke_color:'#5e6ad2',weight:2,fillOpacity:.12};(zone.shape_type==='line'?L.polyline(points,options):L.polygon(points,options)).bindTooltip(label).addTo(overlayGroups[key]);}catch{}}
+      refreshAvailable(poiKeysPresent);appliedLayerState='';applyLayerVisibility(settings?.layers??{},zoneLabelsOn(settings));
+    }catch(e){imageError=`Chưa tải được Atlas: ${String(e)}`;}
+  }
+  let originalImage = "";
+  let eraBackground = $state(false);
+  let layersOpen = $state(true);
+  let imageError = $state("");
   let mapBounds: L.LatLngBoundsExpression | null = null;
   // True when fitBounds ran against a hidden (0x0) container because the tab
   // was switched away mid-load. The zoom it computed is meaningless and is
@@ -111,6 +140,7 @@
   let parkedPosition: PositionUpdate | null = null;
   let parkedTrail: TrailPayload | null = null;
   let availableLayers = $state<string[]>([]);
+  let tacticalPois = $state.raw<PoiLayer[]>([]);
   let promptOpen = $state(false);
   let pendingPixel: { px: number; py: number } | null = null;
 
@@ -157,9 +187,15 @@
         interactive: false,
         keyboard: false,
       }).addTo(map);
+      const name = document.createElement("span");
+      name.textContent = $eraLive?.data?.player?.name || "Bạn";
+      playerMarker.bindTooltip(name, {permanent:true,direction:"bottom"});
       playerArrowEl = playerMarker.getElement()?.querySelector(".player-arrow-inner") ?? null;
     } else {
       playerMarker.setLatLng(ll);
+      const name = document.createElement("span");
+      name.textContent = $eraLive?.data?.player?.name || "Bạn";
+      if (playerMarker.getTooltip()?.getContent() instanceof HTMLElement && (playerMarker.getTooltip()!.getContent() as HTMLElement).textContent !== name.textContent) playerMarker.setTooltipContent(name);
     }
     if (playerArrowEl) {
       // Rotate the INNER element: Leaflet owns the icon's own transform for
@@ -281,6 +317,7 @@
   }
 
   function buildPoiLayers(pois: PoiLayer[]) {
+    tacticalPois = pois;
     if (!map) return;
     const byKey = new Map(pois.map((l) => [l.key, l]));
     for (const key of LAYER_ORDER) {
@@ -484,6 +521,11 @@
     applyLayerVisibility(settings.layers, zoneLabelsOn(settings));
   }
 
+  async function onBatchLayers(layers: Record<string, boolean>) {
+    settings = await patchSettings({ layers });
+    applyLayerVisibility(settings.layers, zoneLabelsOn(settings));
+  }
+
   async function confirmPrompt(name: string) {
     promptOpen = false;
     if (!pendingPixel) return;
@@ -554,7 +596,12 @@
     };
   }
 
+  const scheduleEdgeArrow = frameBudget(() => {
+    if (visible && !destroyed) updateEdgeArrow();
+  });
+
   function recenter() {
+    map?.fire("era:follow-self");
     follow = true;
     if (map && position) map.panTo(toLatLng(position.px, position.py));
     edgeArrow = null;
@@ -594,7 +641,7 @@
     position = p;
     if (!map) return;
     upsertPlayer(p);
-    if (follow) map.panTo(toLatLng(p.px, p.py), { animate });
+    if (follow && !map.getContainer().dataset.wheelZooming) map.panTo(toLatLng(p.px, p.py), { animate });
     updateEdgeArrow();
   }
 
@@ -603,7 +650,8 @@
   // whatever was parked meanwhile is applied once, without animating across
   // what may be a long jump.
   $effect(() => {
-    if (!visible || !map) return;
+    if (!visible) { wheelController?.cancel(); return; }
+    if (!map) return;
     // untrack: the work below both writes and reads $state (position,
     // edgeArrow, nearest via applyPosition). Tracked, that made this effect
     // depend on `position` and re-run itself on the next sample after every
@@ -638,6 +686,7 @@
       // element and never be removed (onDestroy already ran).
       if (destroyed) return;
       const W = info.imageWidthPx;
+      mapSource = info.source;
       const H = info.imageHeightPx;
       pxPerMY = info.pxPerMY;
 
@@ -647,17 +696,30 @@
         maxZoom: Math.log2(MAX_PX_PER_M / info.pxPerMY),
         zoomSnap: 0,
         zoomDelta: 0.25,
-        wheelPxPerZoomLevel: 90,
+        wheelPxPerZoomLevel: 120,
+        wheelDebounceTime: 30,
+        // Canvas giảm số phần tử DOM khi bật nhiều điểm và vùng Atlas.
+        preferCanvas: true,
+        renderer: L.canvas({ padding: 0.3, tolerance: 4 }),
+        inertia: true,
+        inertiaDeceleration: 2400,
+        zoomAnimation: false,
+        scrollWheelZoom: false,
         attributionControl: false,
         zoomControl: true,
       });
+      wheelController = smoothWheel(map);
       const bounds: L.LatLngBoundsExpression = [
         [-H, 0],
         [0, W],
       ];
       const urls = await getBasemapUrls();
       if (destroyed || !map) return;
-      L.imageOverlay(urls.fullmap, bounds).addTo(map);
+      originalImage = urls.fullmap;
+      try { eraBackground = mapSource === "vulnona" && localStorage.getItem("era-map-background") !== "local"; } catch { eraBackground = mapSource === "vulnona"; }
+      imageLayer = L.imageOverlay(eraBackground ? "https://myislemap.com/assets/gateway-map.webp?v=20260809v1" : urls.fullmap, bounds, {pane:'tilePane',zIndex:0}).addTo(map);
+      imageLayer.on("error", () => { if (eraBackground) {eraBackground=false;imageLayer?.setUrl(originalImage);imageError="Chưa tải được nền ERA; đang dùng nền đã lưu.";} });
+      void loadAtlas();
       mapBounds = bounds;
       map.fitBounds(bounds);
       fitPending = !visible;
@@ -695,7 +757,8 @@
       // A manual drag pauses follow; the edge arrow / recenter button resume
       // it. Zoom alone does NOT pause (you zoom around your own position).
       map.on("dragstart", () => (follow = false));
-      map.on("move", updateEdgeArrow);
+      map.on("move", scheduleEdgeArrow);
+      map.on("moveend", scheduleEdgeArrow);
 
       await bag.add(
         onPositionUpdate(async (p) => {
@@ -755,6 +818,8 @@
 
   onDestroy(() => {
     destroyed = true;
+    scheduleEdgeArrow.cancel();
+    wheelController?.destroy();
     try {
       if (map) {
         // Leaflet ends a zoom animation on a 250 ms timer (Map._animateZoom,
@@ -778,6 +843,11 @@
 <div class="flex h-full min-h-0">
   <div class="relative min-w-0 flex-1">
     <div class="absolute inset-0" bind:this={mapEl} style="background: var(--color-bg)"></div>
+    {#if map}
+      <EraSquad {map} {visible} source={mapSource} {position} pauseFollow={()=>follow=false} onself={recenter} />
+      <TacticalTools pois={tacticalPois} {position} layers={settings?.layers ?? {}} available={availableLayers} onlayers={onBatchLayers} onlocate={locatePx} />
+      <div class="era-map-tools"><button aria-pressed={hdEnabled} onclick={()=>{hdEnabled=!hdEnabled;if(hdEnabled&&hd&&map){imageError='';hd.addTo(map);}else hd?.remove();}}>{hdEnabled?'Nền HD · RaidAtlas':'Nền dự phòng'}</button><button aria-expanded={layersOpen} onclick={()=>{layersOpen=!layersOpen;setTimeout(()=>map?.invalidateSize(),0);}}>Lớp & điểm {layersOpen?"−":"+"}</button>{#if imageError}<span role="status">{imageError}</span>{/if}</div>
+    {/if}
     {#if edgeArrow}
       <button
         class="edge-arrow"
@@ -794,7 +864,7 @@
       </button>
     {/if}
   </div>
-  <LayerPanel
+  {#if layersOpen}<LayerPanel
     available={availableLayers}
     layers={settings?.layers ?? {}}
     zoneLabels={zoneLabelsOn(settings)}
@@ -804,6 +874,7 @@
     places={searchPlaces}
     {islepilotNote}
     ontoggle={onToggleLayer}
+    onbatchlayers={onBatchLayers}
     ontogglezonelabels={onToggleZoneLabels}
     onrename={onRename}
     ondelete={onDelete}
@@ -812,8 +883,9 @@
     onsetcolor={(wp, color) => void onSetColor(wp, color)}
     onlocate={locatePx}
     onsearchcoords={onSearchCoords}
-  />
+  />{/if}
 </div>
+
 
 <NamePrompt
   open={promptOpen}
@@ -828,6 +900,7 @@
 />
 
 <style>
+.era-map-tools{position:absolute;z-index:500;top:12px;left:60px;display:flex;gap:8px;background:var(--color-panel);border-radius:8px;font-size:12px}.era-map-tools button{min-height:36px;padding:8px 12px;border:1px solid var(--color-border);border-radius:8px;cursor:pointer}.era-map-tools button:disabled{opacity:.5}.era-map-tools span{padding:8px;max-width:250px}
   :global(.leaflet-container) {
     background: var(--color-bg);
     font-family: "Segoe UI", system-ui, sans-serif;

@@ -37,6 +37,7 @@ pub struct TrailPayload {
 /// kept current, so a window being shown again is already up to date;
 /// `pipeline::resync` remains only as belt-and-braces for reloads.
 pub fn emit_all<S: Serialize + Clone>(app: &AppHandle, event: &str, payload: S) {
+    if let Ok(value) = serde_json::to_value(&payload) { crate::web_bridge::publish(event, value); }
     if let Err(e) = app.emit(event, payload) {
         log::warn!("emit {event} failed: {e}");
     }

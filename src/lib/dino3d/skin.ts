@@ -80,12 +80,12 @@ const sampleWrapped = (img: ImageData, x: number, y: number): number => {
  * Build the recoloured base-colour canvas: zone replacement -> TMC mask ->
  * RAC cavity darkening.
  */
-function compositeMap(
+async function compositeMap(
   pattern: ImageData,
   palette: DinoPalette,
   tmc: ImageData | null,
   rac: ImageData | null,
-): HTMLCanvasElement {
+): Promise<HTMLCanvasElement> {
   const zones = ZONE_REFS.map((z) => ({
     ...z,
     color: hexToRgb(palette[z.key]).map((c) => c * BRIGHTNESS) as unknown as [
@@ -107,7 +107,12 @@ function compositeMap(
   const d = pattern.data;
   const scaleTmc = tmc && (tmc.width !== pattern.width || tmc.height !== pattern.height);
   const scaleRac = rac && (rac.width !== pattern.width || rac.height !== pattern.height);
+  let sliceAt = performance.now();
   for (let i = 0; i < d.length; i += 4) {
+    if ((i & 16383) === 0 && performance.now() - sliceAt >= 4) {
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
+      sliceAt = performance.now();
+    }
     let r = d[i], g = d[i + 1], b = d[i + 2];
 
     // 1. Nearest-reference-colour replacement (distances in 0..1 space).
@@ -170,15 +175,20 @@ function compositeMap(
 }
 
 /** Blend the species normal map with the shared detail normal (tangent add). */
-function compositeNormal(
+async function compositeNormal(
   base: ImageData,
   detail: ImageData,
   detailScale: number,
-): HTMLCanvasElement {
+): Promise<HTMLCanvasElement> {
   // Work on a COPY — the source ImageData lives in the shared decode cache.
   base = new ImageData(new Uint8ClampedArray(base.data), base.width, base.height);
   const d = base.data;
+  let sliceAt = performance.now();
   for (let i = 0; i < d.length; i += 4) {
+    if ((i & 16383) === 0 && performance.now() - sliceAt >= 4) {
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
+      sliceAt = performance.now();
+    }
     const px = (i / 4) % base.width;
     const py = Math.floor(i / 4 / base.width);
     const j = sampleWrapped(
@@ -250,10 +260,10 @@ async function buildSkinUncached(
     loadImageData(SHARED.detailNormal).catch(() => null),
   ]);
   return {
-    map: compositeMap(pattern, palette, tmc, rac),
+    map: await compositeMap(pattern, palette, tmc, rac),
     normal:
       normal && detailNormal
-        ? compositeNormal(normal, detailNormal, entry.detailScale || 12)
+        ? await compositeNormal(normal, detailNormal, entry.detailScale || 12)
         : normal
           ? toCanvas(normal)
           : null,

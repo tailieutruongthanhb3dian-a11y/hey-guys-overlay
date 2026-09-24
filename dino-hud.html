@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dino HUD</title>
+    <style>
+      html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
+      canvas { display:block; }
+      #drag-handle { display:none;position:fixed;right:7px;top:5px;z-index:2;align-items:center;gap:4px;padding:3px 7px;border:1px solid rgba(232,163,61,.8);border-radius:5px;background:rgba(10,13,9,.94);color:#ffd591;font:700 9px "Segoe UI",sans-serif;letter-spacing:.08em;cursor:move;user-select:none; }
+      #resize-handle { position:fixed;right:2px;bottom:2px;width:18px;height:18px;border-right:2px solid rgba(232,163,61,.95);border-bottom:2px solid rgba(232,163,61,.95);opacity:0;cursor:nwse-resize; }
+      body.editing #drag-handle { display:flex; }
+      #resize-handle { pointer-events:none; }
+      body.editing #resize-handle { opacity:1; pointer-events:auto; }
+    </style>
+  </head>
+  <body>
+    <canvas id="dino-info"></canvas>
+    <div id="drag-handle" aria-label="Kéo HUD">⠿ KÉO</div>
+    <div id="resize-handle" aria-hidden="true"></div>
+    <script type="module" src="/src/dino-hud/main.ts"></script>
+  </body>
+</html>

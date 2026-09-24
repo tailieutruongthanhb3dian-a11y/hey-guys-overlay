@@ -29,6 +29,11 @@ export type Settings = Record<string, unknown> & {
   minimap: {
     visible: boolean;
     require_game: boolean;
+    free_position?: boolean;
+    desktop_x?: number;
+    desktop_y?: number;
+    hide_with_app?: boolean;
+    show_names?: boolean;
     corner: "top-left" | "top-right" | "bottom-left" | "bottom-right";
     size_px: number;
     margin_px: number;
@@ -37,6 +42,12 @@ export type Settings = Record<string, unknown> & {
     click_through: boolean;
     show_trail: boolean;
     show_waypoints: boolean;
+  };
+  dino_hud?: {
+    show_prime?: boolean;
+    desktop_x?: number;
+    desktop_y?: number;
+    width_px?: number;
   };
   hotkeys: Record<string, string>;
   layers: Record<string, boolean>;
@@ -371,6 +382,7 @@ export interface DinoUpdate {
 
 export interface IslepilotState {
   loggedIn: boolean;
+  loginActive: boolean;
   authMode: "token" | "legacy";
   tokenPresent: boolean;
   lastUpdate: DinoUpdate | null;
@@ -473,6 +485,10 @@ export const onDinoUpdate = (cb: (u: DinoUpdate) => void): Promise<UnlistenFn> =
   listen<DinoUpdate>("dino://update", (e) => cb(e.payload));
 export const onDinoAuthExpired = (cb: () => void): Promise<UnlistenFn> =>
   listen("dino://auth-expired", () => cb());
+export const onDinoLoginStarted = (
+  cb: (mode: "token" | "legacy") => void,
+): Promise<UnlistenFn> =>
+  listen<"token" | "legacy">("dino://login-started", (e) => cb(e.payload));
 export const onDinoLoginOk = (cb: () => void): Promise<UnlistenFn> =>
   listen("dino://login-ok", () => cb());
 export const onDinoLoginFailed = (

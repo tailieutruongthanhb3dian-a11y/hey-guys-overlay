@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dino-hud",
+  "description": "Cho HUD chỉ số nhận sự kiện cục bộ và đọc trạng thái hiển thị của cửa sổ.",
+  "windows": ["dino-hud"],
+  "permissions": ["core:event:default", "core:window:allow-is-visible"]
+}

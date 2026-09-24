@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value};
 
-pub const APP_DIR_NAME: &str = "TheIsleOverlay";
+pub const APP_DIR_NAME: &str = "GatewayCompanion";
 pub const GAME_PROCESS_NAME: &str = "TheIsleClient-Win64-Shipping.exe";
 
 fn env_dir(var: &str) -> PathBuf {
@@ -98,6 +98,11 @@ pub fn default_settings() -> Value {
     json!({
         "minimap": {
             "visible": true,
+            "free_position": false,
+            "desktop_x": 40,
+            "desktop_y": 80,
+            "hide_with_app": true,
+            "show_names": true,
             "require_game": true,        // auto-hide unless the game is running AND focused
             "corner": "top-left",        // top-left | top-right | bottom-left | bottom-right
             "size_px": 260,
@@ -108,7 +113,14 @@ pub fn default_settings() -> Value {
             "show_trail": true,          // trail lines on the minimap disc
             "show_waypoints": true,      // waypoint dots + nearest-waypoint arrow
         },
+        "dino_hud": {
+            "desktop_x": 320,
+            "desktop_y": 80,
+            "width_px": 280,
+        },
+        "position_source": "era",
         "hotkeys": {
+            "cycle_layout": "Ctrl+Alt+L",
             "toggle_minimap": "Ctrl+Alt+M",
             "toggle_fullmap": "Ctrl+Alt+F",
             "toggle_click_through": "Ctrl+Alt+C",
@@ -152,7 +164,7 @@ pub fn default_settings() -> Value {
         // position ever leaves the machine, and Windows account names are
         // stripped from crash text before it is sent.
         "telemetry": {
-            "enabled": true,
+            "enabled": false,
         },
         "number_format": "auto",         // auto | us | eu
         "language": "vi",                // vi | en
@@ -293,7 +305,8 @@ mod tests {
         // A realistic settings.json written by the old Python app.
         let legacy = json!({
             "minimap": {"corner": "bottom-right", "opacity": 0.5},
-            "hotkeys": {"toggle_minimap": "Ctrl+Shift+M"},
+            "position_source": "era",
+        "hotkeys": {"toggle_minimap": "Ctrl+Shift+M"},
             "layers": {"food": true},
             "number_format": "eu",
         });

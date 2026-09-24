@@ -1,6 +1,6 @@
 # TheIsle Overlay
 
-[Tiếng Việt](README.md) · **English**
+[Tiếng Việt](UPSTREAM-README.md) · **English**
 
 Map overlay for **The Isle: Evrima** (Gateway). Circular minimap pinned to the
 game window · full map with POIs, place names, waypoints and travel trails ·
@@ -18,17 +18,17 @@ app.
 
 [![TheIsle Overlay video guide](https://img.youtube.com/vi/R2IzwqHapuw/hqdefault.jpg)](https://y2u.be/R2IzwqHapuw)
 
-![Minimap with a friend marker, stat bars, Prime quests and the voice strip over the running game — the dino wears a skin just changed in the app](docs/screenshot-ingame.jpg)
+![Minimap with a friend marker, stat bars, Prime quests and the voice strip over the running game — the dino wears a skin just changed in the app](screenshot-ingame.jpg)
 
-![Full map with place names and POI layers](docs/screenshot-fullmap.png)
+![Full map with place names and POI layers](screenshot-fullmap.png)
 
-![Your Dino tab with stats and Prime progress](docs/screenshot-dino.png)
+![Your Dino tab with stats and Prime progress](screenshot-dino.png)
 
-![Garage (Gacha) tab: a parked dino in 3D with growth, stats and a Restore button](docs/screenshot-garage.png)
+![Garage (Gacha) tab: a parked dino in 3D with growth, stats and a Restore button](screenshot-garage.png)
 
-![Skin editor: ten colour zones, a 3D preview of the species you are playing, applied live](docs/screenshot-skin.png)
+![Skin editor: ten colour zones, a 3D preview of the species you are playing, applied live](screenshot-skin.png)
 
-![Voice tab: proximity voice over IsleVOIP, device pickers and who is in earshot](docs/screenshot-voip.png)
+![Voice tab: proximity voice over IsleVOIP, device pickers and who is in earshot](screenshot-voip.png)
 
 ## Features
 
@@ -106,16 +106,16 @@ click Steam login there; if that still fails, paste the cookie manually:
    **F12** (or right-click → **Inspect**) and open the **Application** tab
    (Chrome) / **Storage** (Firefox).
 
-   ![Open DevTools and pick the Application tab](docs/guide-dino-1-devtools.png)
+   ![Open DevTools and pick the Application tab](guide-dino-1-devtools.png)
 
 2. Pick **Cookies** → the server's domain → click the **`islepilot_player`**
    cookie → copy the whole **Value**.
 
-   ![Copy the islepilot_player cookie value](docs/guide-dino-2-copy-cookie.jpg)
+   ![Copy the islepilot_player cookie value](guide-dino-2-copy-cookie.jpg)
 
 3. In the app: paste it into the cookie box → click **Verify & save cookie**.
 
-   ![Enter the server link, paste the cookie and save](docs/guide-dino-3-paste-app.jpg)
+   ![Enter the server link, paste the cookie and save](guide-dino-3-paste-app.jpg)
 
 If the server runs a **live map**, the app detects it and enables automatic
 position — no manual coordinate copying needed; when the server has the live
@@ -258,6 +258,6 @@ relay and realtime infrastructure are paid for by the author. See the
 "Pro / Support" tab in the app. If you find it useful, you can also buy the
 author a coffee:
 
-<img src="docs/qr_donate.png" alt="VietQR — Techcombank 8866886767 TRAN QUOC TOAN" width="280">
+<img src="qr_donate.png" alt="VietQR — Techcombank 8866886767 TRAN QUOC TOAN" width="280">
 
 **Techcombank · 8866886767 · TRAN QUOC TOAN**

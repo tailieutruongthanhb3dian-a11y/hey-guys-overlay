@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" fill="none">
+<title>Hey Guys Overlay</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1280" y2="400" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#0b0b10"/><stop offset="0.55" stop-color="#15101c"/><stop offset="1" stop-color="#241330"/>
+</linearGradient>
+<radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(250 200) scale(260)">
+<stop offset="0" stop-color="#a855b5" stop-opacity="0.45"/><stop offset="1" stop-color="#a855b5" stop-opacity="0"/>
+</radialGradient>
+<pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" stroke="#ffffff" stroke-opacity="0.04"/></pattern>
+<linearGradient id="txt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3b8ea"/></linearGradient>
+</defs>
+<rect width="1280" height="400" rx="28" fill="url(#bg)"/>
+<rect width="1280" height="400" rx="28" fill="url(#grid)"/>
+<circle cx="250" cy="200" r="260" fill="url(#glow)"/>
+<g opacity="0.14" stroke="#d8a9df" stroke-width="2">
+<path d="M760 360C840 300 900 330 980 270S1120 200 1240 230"/>
+<path d="M700 380C800 320 880 350 960 300S1110 240 1260 280"/>
+<circle cx="1120" cy="110" r="70"/><circle cx="1120" cy="110" r="40"/>
+<path d="M1120 30V60M1120 160V190M1040 110H1070M1170 110H1200"/>
+</g>
+<g transform="translate(110 60) scale(0.546875)">
+
+<rect x="16" y="16" width="480" height="480" rx="112" fill="#101014"/>
+<circle cx="256" cy="256" r="211" stroke="#a855b5" stroke-width="20" stroke-dasharray="870 70 310 76" transform="rotate(-42 256 256)"/>
+<circle cx="256" cy="256" r="185" stroke="#d8a9df" stroke-width="3"/>
+<path d="M92 162A191 191 0 0 1 168 91M420 345A191 191 0 0 1 346 420" stroke="#f7f8f8" stroke-width="7" stroke-linecap="round"/>
+<g transform="rotate(-16 308 237)">
+<path d="M269 328C250 319 239 303 230 282L207 245C201 234 212 223 222 231L247 255L247 170C247 155 268 155 268 170V221L277 139C279 124 300 127 298 142L293 220L311 130C314 116 335 122 331 137L316 223L339 154C344 140 363 147 359 161L338 240L357 204C364 191 382 201 375 214L350 278C341 301 326 318 312 329V347H269Z" fill="#f7f8f8"/>
+<path d="M276 282C281 264 298 255 319 260" stroke="#101014" stroke-width="9" stroke-linecap="round"/>
+</g>
+<path d="M130 334C103 325 92 304 96 279C100 252 124 237 150 242L183 251L208 270L193 289L165 282L173 301L191 311L181 327L157 310L144 291C130 290 122 299 128 309C135 323 160 331 174 347C186 361 190 379 184 394L160 383C164 364 149 346 130 334Z" fill="#f7f8f8"/>
+<path d="M155 258L172 266L155 273Z" fill="#101014"/>
+<path d="M202 379C237 401 283 403 321 383" stroke="#a855b5" stroke-width="12" stroke-linecap="round"/>
+</g>
+<text x="440" y="150" fill="#d8a9df" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="6">THE ISLE · EVRIMA · GATEWAY</text>
+<text x="436" y="228" fill="url(#txt)" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="78" font-weight="800" letter-spacing="-1">Hey Guys Overlay</text>
+<text x="440" y="278" fill="#b9b3c4" font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="26">Minimap · Bản đồ chiến thuật · ERA &amp; Bạn bè · Skin Studio</text>
+<g font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" font-size="17" font-weight="600">
+<rect x="440" y="306" width="104" height="34" rx="17" fill="#a855b5" fill-opacity="0.18" stroke="#a855b5"/>
+<text x="492.0" y="329" fill="#f0d6f4" text-anchor="middle">Tauri 2</text>
+<rect x="556" y="306" width="104" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.25"/>
+<text x="608.0" y="329" fill="#e8e6ee" text-anchor="middle">Svelte 5</text>
+<rect x="672" y="306" width="90" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.25"/>
+<text x="717.0" y="329" fill="#e8e6ee" text-anchor="middle">Rust</text>
+<rect x="774" y="306" width="128" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.25"/>
+<text x="838.0" y="329" fill="#e8e6ee" text-anchor="middle">Windows 10+</text>
+</g>
+</svg>

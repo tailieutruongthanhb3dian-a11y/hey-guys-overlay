@@ -4,6 +4,61 @@ Mọi thay đổi đáng chú ý của TheIsle Overlay được ghi tại đây,
 [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/) và đánh số phiên bản
 [SemVer](https://semver.org/lang/vi/). Mã trong ngoặc là commit tương ứng.
 
+## [Chưa phát hành]
+
+### Cập nhật 05/09/2026
+
+- Nâng ngân sách vẽ bản đồ/minimap lên 60 Hz và bám trực tiếp v-sync; polling ERA
+  cho khủng long và bạn bè giữ chu kỳ mục tiêu một giây.
+- Tách minimap và ô chỉ số khủng long thành hai HUD riêng. Khi mở chế độ chỉnh HUD,
+  mỗi khối có thể kéo và đổi kích thước bằng góc vàng; vị trí/kích thước được lưu sau
+  khi thao tác dừng để tránh I/O làm giật lúc kéo.
+- Sửa Dino HUD mới mở chỉ hiện dấu gạch: cho phép cửa sổ cục bộ đọc snapshot ERA,
+  tự đồng bộ snapshot mỗi giây và tính phần trăm từ exactVitals khi trường phần trăm
+  trực tiếp bị thiếu.
+- Thêm Skin Studio: tự nhận loài đang chơi (kể cả tên rút gọn như Rex), xem trước
+  màu trên mô hình 3D, phối bảy vùng màu theo ERA, ba preset hợp lệ cho tài khoản
+  thường, lưu tối đa ba skin trên máy và chỉ áp dụng sau khi người dùng bấm xác nhận.
+- Thêm trang ERA & Bạn bè làm điểm vào mặc định: Steam ERA riêng, tìm tên online,
+  gửi/nhận/từ chối/hủy lời mời, xóa bạn có xác nhận; tự trở về app sau đăng nhập.
+- Kết nối API ERA theo client công khai; cookie ở WebView2, backend cố định origin,
+  không chuyển cookie sang frontend hoặc đi theo redirect HTTP.
+- Mở bảng Live Map/Garage/skin chính thức ERA trong cửa sổ riêng dùng cùng phiên.
+- Tách định danh/thư mục dữ liệu thành Gateway Companion và bỏ endpoint cập nhật
+  bản gốc; mặc định tắt telemetry cho bản thử.
+- Điều hướng hai hàng khi cửa sổ hẹp để các tab chính vẫn bấm được.
+- Kiểm thử: Svelte 0 lỗi/0 cảnh báo; 61 test Rust qua, 9 test cần dữ liệu/dịch vụ ngoài
+  được bỏ qua; QA Chromium dùng IPC fixture qua. Tích hợp tài khoản ERA thật chưa nghiệm thu.
+
+- Bản đồ: bật/tắt tất cả lớp đang có bằng một lần lưu, có hoàn tác, khóa thao tác
+  trong lúc lưu và báo lỗi nếu lưu thất bại.
+- Tìm địa danh/waypoint không dấu; bảng lệnh nhanh xử lý thêm chữ đ/Đ.
+- Garage: giới hạn sáu viewer 3D theo độ hiển thị của thẻ, giải phóng viewer khi
+  ra khỏi khung nhìn. Khi hủy viewer, dừng animation và trả WebGL context.
+- Phạm vi đối chiếu 2.2.0 và tiêu chí nghiệm thu: `docs/PRODUCT-REQUIREMENTS.md`.
+
+### Thêm
+
+- **Kết nối Steam bằng một nút** ngay trên thanh điều hướng, trong tab Khủng long và
+  tại màn hình Garage chưa đăng nhập. Cửa sổ xác thực tự đưa ra giữa màn hình, app tự
+  bắt redirect, kiểm tra token và đồng bộ trạng thái chờ/thành công/hết hạn giữa mọi
+  màn hình; không cần chọn server hay sao chép cookie. Cách thủ công vẫn nằm trong mục
+  nâng cao để xử lý trường hợp hiếm WebView2 không bắt được redirect.
+- Phím tắt `Ctrl+1` đến `Ctrl+6` để chuyển nhanh giữa sáu tab.
+- **Bảng lệnh nhanh `Ctrl+K`**: tìm không dấu và mở Map, Khủng long, Garage,
+  Cài đặt, Hướng dẫn, Ủng hộ hoặc kết nối Steam mà không phải nhớ vị trí menu;
+  hỗ trợ đầy đủ phím mũi tên, Enter và Escape.
+
+### Thay đổi
+
+- Làm mới toàn bộ UI theo hệ **Gateway Tactical**: nền tối có độ tương phản cao, xanh
+  điện cho hành động, vàng cho định hướng và hồng chỉ dành cho vị trí người chơi; card,
+  form, nút, trạng thái, bản đồ, Garage, Cài đặt, Hướng dẫn và trang Ủng hộ dùng chung
+  một hệ phân cấp thị giác.
+- Thanh điều hướng co giãn theo chiều rộng, hiển thị trạng thái dữ liệu bản đồ và tài
+  khoản Steam; bổ sung focus bàn phím, nhãn trợ năng, thông báo lỗi có hành động và tôn
+  trọng thiết lập giảm chuyển động của Windows.
+
 ## [1.5.2] — 2026-08-25
 
 ### Thay đổi

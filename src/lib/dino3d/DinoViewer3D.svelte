@@ -22,10 +22,12 @@
     species,
     palette = null,
     height = 300,
+    active = true,
   }: {
     species: string;
     palette?: DinoPalette | null;
     height?: number;
+    active?: boolean;
   } = $props();
 
   let container: HTMLDivElement | undefined = $state();
@@ -69,6 +71,7 @@
   let cleanup: (() => void) | null = null;
   /** Key of the scene currently built (or being built) — the rebuild guard. */
   let builtKey: string | null = null;
+  let syncVisibility: (() => void) | null = null;
 
   async function build(el: HTMLDivElement, sp: string, pal: DinoPalette) {
     const gen = ++generation;
@@ -192,13 +195,13 @@
 
       // Render only while on screen — a kept-alive hidden tab (or scrolled-
       // away viewer) must cost zero GPU/CPU.
-      let visible = true;
+      let visible = false;
       const io = new IntersectionObserver((entries) => {
         const nowVisible = entries.some((e) => e.isIntersecting);
         if (nowVisible && !visible) {
           visible = true;
           clock.getDelta(); // swallow the hidden gap so the animation doesn't jump
-          tick();
+          syncVisibility?.();
         } else {
           visible = nowVisible;
         }
@@ -207,17 +210,28 @@
 
       const clock = new THREE.Clock();
       let raf = 0;
-      const tick = () => {
-        if (!visible) return; // loop resumes from the observer
+      let lastFrame = -Infinity;
+      const tick = (now: number) => {
+        raf = 0;
+        if (!visible || !active || document.hidden) return;
         raf = requestAnimationFrame(tick);
-        mixer?.update(clock.getDelta());
+        if (now - lastFrame < 1000 / 30 - 0.5) return;
+        lastFrame = now;
+        mixer?.update(Math.min(clock.getDelta(), 0.1));
         controls.update();
         renderer.render(scene, camera);
       };
-      tick();
+      syncVisibility = () => {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        clock.getDelta();
+        if (visible && active && !document.hidden) raf = requestAnimationFrame(tick);
+      };
+      document.addEventListener("visibilitychange", syncVisibility);
 
       const onResize = () => {
-        const w = el.clientWidth || width;
+        const w = el.clientWidth;
+        if (!w || !active) return;
         renderer.setSize(w, height);
         camera.aspect = w / height;
         camera.updateProjectionMatrix();
@@ -227,16 +241,21 @@
 
       cleanup = () => {
         visible = false;
+        if (syncVisibility) document.removeEventListener("visibilitychange", syncVisibility);
+        syncVisibility = null;
         cancelAnimationFrame(raf);
         io.disconnect();
         ro.disconnect();
         controls.dispose();
+        mixer?.stopAllAction();
+        mixer?.uncacheRoot(model);
         mapTex.dispose();
         normalTex?.dispose();
         skinMat.dispose();
         eyeMat.dispose();
         // NOTE: geometries belong to the cached template — never disposed here.
         renderer.dispose();
+        renderer.forceContextLoss();
         renderer.domElement.remove();
       };
       status = "ready";
@@ -261,6 +280,8 @@
     builtKey = key;
     void build(el, sp, pal);
   });
+
+  $effect(() => { void active; syncVisibility?.(); });
 
   onDestroy(() => {
     generation++;

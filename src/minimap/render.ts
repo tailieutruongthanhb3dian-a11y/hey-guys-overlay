@@ -7,6 +7,7 @@
 // No repaint timers: draw only on new data.
 
 export interface PoiDot {
+  name?: string;
   xCm: number;
   yCm: number;
   px: number; // px in the ACTIVE calibration's basemap space
@@ -17,6 +18,7 @@ export interface PoiDot {
 }
 
 export interface DinoBars {
+  percentages?: boolean;
   hp: { current: number | null; max: number | null };
   hunger: { current: number | null; max: number | null };
   thirst: { current: number | null; max: number | null };
@@ -41,9 +43,13 @@ export interface QuestRow {
   /** Vietnamese translation from the backend; absent when untranslated. */
   textVi?: string | null;
   completed: boolean;
+  unknown?: boolean;
 }
 
 export interface MinimapState {
+  positionStale?: boolean;
+  navigation?: {bearingDeg:number;distanceM:number;name:string} | null;
+  friends?: PoiDot[];
   /** Player position (cm + basemap px) and heading, or null before first sample. */
   position: { xCm: number; yCm: number; px: number; py: number; headingDeg: number | null } | null;
   /** Trail segments in basemap px. */
@@ -88,6 +94,7 @@ export interface MinimapState {
   /** Extra height for the Prime-quests panel; 0 = panel off or no quests. */
   questsH: number;
   quests: QuestRow[];
+  questTitle?: string;
   /** Quest text language: "vi" shows textVi (fallback English). */
   questLang: "vi" | "en";
   /** Localised strings: compass letters clockwise from north, hint, unknown. */
@@ -160,11 +167,39 @@ export function render(canvas: HTMLCanvasElement, state: MinimapState): void {
   ctx.restore();
 
   drawCompass(ctx, state, c, radius);
-  drawWaypointArrow(ctx, state, c, radius);
+  if (state.positionStale) { return; }
+  if (!state.navigation) drawWaypointArrow(ctx, state, c, radius);
+  else drawNavigation(ctx,state,c,radius);
   drawHeadingPill(ctx, state, c, radius);
   // Player marker LAST and always fully opaque: however faded the map is,
   // you must still see where you are or the whole map is pointless.
   drawPlayer(ctx, state, c);
+}
+
+/** Chỉ vẽ bản đồ, dùng cho cửa sổ minimap độc lập. */
+export function renderMap(canvas: HTMLCanvasElement, state: MinimapState): void {
+  render(canvas, { ...state, panelH: 0, questsH: 0 });
+}
+
+/** Chỉ vẽ bảng chỉ số và nhiệm vụ, đặt trong cửa sổ HUD độc lập. */
+export function renderInfo(canvas: HTMLCanvasElement, state: MinimapState, width: number): void {
+  const height = state.panelH + state.questsH;
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(0, -width);
+  if (state.panelH > 0) drawDinoPanel(ctx, state, width);
+  if (state.questsH > 0) drawQuestPanel(ctx, state, width);
+  ctx.restore();
 }
 
 function drawMap(
@@ -254,6 +289,19 @@ function drawMap(
   }
 
   // Waypoints: user colour + WHITE ring, so they never read as POI dots
+  for (const friend of state.friends ?? []) {
+    const distM = Math.hypot(friend.xCm-pos.xCm,friend.yCm-pos.yCm)/100;
+    if(distM > limitM) continue;
+    const [x,y] = toWidget(friend.px,friend.py);
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle="#5e6ad2";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+      if (friend.name) {
+        ctx.save();ctx.font="bold 11px system-ui";ctx.textAlign="center";
+        ctx.lineWidth=3;ctx.strokeStyle="#101014";ctx.strokeText(friend.name.slice(0,18),x,y-9);
+        ctx.fillStyle="#fff";ctx.fillText(friend.name.slice(0,18),x,y-9);ctx.restore();
+      }
+  }
+  // Waypoints: user colour + WHITE ring, so they never read as POI dots
   // (those carry a dark ring).
   if (state.showWaypoints) {
     for (const wp of state.waypoints) {
@@ -282,6 +330,23 @@ function drawMap(
 /** Rim arrow + distance toward the closest waypoint OUTSIDE the view radius
  * (inside it, its dot is already visible). North is always up, so the screen
  * angle IS the compass bearing. */
+function drawNavigation(ctx:CanvasRenderingContext2D,state:MinimapState,c:number,radius:number) {
+  const target=state.navigation!;
+  if(!state.position)return;
+  const rad=(target.bearingDeg-90)*Math.PI/180;
+  const outside=target.distanceM>state.radiusM;
+  const r=outside?radius-10:Math.min(radius-10,target.distanceM/state.radiusM*radius);
+  ctx.save();ctx.translate(c+r*Math.cos(rad),c+r*Math.sin(rad));
+  ctx.rotate(rad+Math.PI/2);ctx.beginPath();
+  if(outside){ctx.moveTo(0,-8);ctx.lineTo(6,5);ctx.lineTo(-6,5);ctx.closePath();}
+  else ctx.arc(0,0,6,0,Math.PI*2);
+  ctx.fillStyle="#5e6ad2";ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.fill();ctx.stroke();ctx.restore();
+  const label=`${target.name.slice(0,14)} · ${target.distanceM>=1000?(target.distanceM/1000).toFixed(1)+" km":Math.round(target.distanceM)+" m"}`;
+  ctx.save();ctx.font="bold 11px system-ui";ctx.textAlign="center";
+  const w=Math.min(state.sizePx-36,ctx.measureText(label).width+14);
+  ctx.fillStyle="rgba(10,15,22,.94)";ctx.fillRect(c-w/2,24,w,20);ctx.fillStyle="#fff";ctx.fillText(label,c,38,w-8);ctx.restore();
+}
+
 export function drawWaypointArrow(
   ctx: CanvasRenderingContext2D,
   state: MinimapState,
@@ -443,7 +508,7 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
   // Backing card.
   ctx.beginPath();
   ctx.roundRect(4, top, size - 8, h, 8);
-  ctx.fillStyle = "rgba(10, 13, 9, 0.78)";
+  ctx.fillStyle = "rgba(10, 13, 9, 0.94)";
   ctx.fill();
 
   const dino = state.dino;
@@ -451,7 +516,7 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
     dino
       ? [
           {
-            label: "HP",
+            label: "Máu",
             cur: dino.hp.current,
             max: dino.hp.max,
             color:
@@ -463,13 +528,13 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
                     : "#e2664a"
                 : "#72d653",
           },
-          { label: "\u{1F356}", cur: dino.hunger.current, max: dino.hunger.max, color: "#e8a33d" },
-          { label: "\u{1F4A7}", cur: dino.thirst.current, max: dino.thirst.max, color: "#4aa8d8" },
+          { label: "Thức ăn", cur: dino.hunger.current, max: dino.hunger.max, color: "#e8a33d" },
+          { label: "Nước", cur: dino.thirst.current, max: dino.thirst.max, color: "#4aa8d8" },
           // Stamina (token mode only) — the window is one row taller then.
           ...(dino.stamina
             ? [
                 {
-                  label: "\u{26A1}",
+                  label: "Thể lực",
                   cur: dino.stamina.current,
                   max: dino.stamina.max,
                   color: "#a78bfa",
@@ -491,7 +556,7 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
   }
 
   const rowH = 16;
-  const barX = 30;
+  const barX = 64;
   const barW = size - 8 - barX - 44;
   rows.forEach((row, i) => {
     const y = top + 6 + i * rowH + rowH / 2;
@@ -516,7 +581,7 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
     ctx.textAlign = "right";
     ctx.fillStyle = COLORS.text;
     ctx.fillText(
-      row.cur !== null && row.max !== null ? `${Math.round(row.cur)}/${Math.round(row.max)}` : "—",
+      row.cur !== null && row.max !== null ? dino?.percentages ? `${Math.round(row.cur)}%` : `${Math.round(row.cur)}/${Math.round(row.max)}` : "—",
       size - 12,
       y,
     );
@@ -527,7 +592,7 @@ function drawDinoPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size:
   ctx.textAlign = "left";
   ctx.fillStyle = COLORS.accent;
   ctx.fillText(
-    dino.growthPct !== null ? `Growth ${Math.round(dino.growthPct)}%` : "Growth —",
+    dino.growthPct !== null ? `Tăng trưởng ${Math.round(dino.growthPct)}%` : "Tăng trưởng —",
     10,
     gy,
   );
@@ -545,7 +610,7 @@ function drawQuestPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size
 
   ctx.beginPath();
   ctx.roundRect(4, top, size - 8, h, 8);
-  ctx.fillStyle = "rgba(10, 13, 9, 0.78)";
+  ctx.fillStyle = "rgba(10, 13, 9, 0.94)";
   ctx.fill();
 
   const done = state.quests.filter((q) => q.completed).length;
@@ -553,14 +618,14 @@ function drawQuestPanel(ctx: CanvasRenderingContext2D, state: MinimapState, size
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillStyle = COLORS.accent;
-  ctx.fillText(`Prime ${done}/${state.quests.length}`, 10, top + 4 + QUEST_HEADER_H / 2);
+    ctx.fillText(state.questTitle ?? `Nhiệm vụ Prime ${state.quests.some(q => q.unknown) ? "—" : done}/${state.quests.length}`, 10, top + 4 + QUEST_HEADER_H / 2);
 
   const maxW = size - 8 - 24 - 8; // card minus glyph column minus right pad
   state.quests.forEach((quest, i) => {
     const y = top + 4 + QUEST_HEADER_H + i * QUEST_ROW_H + QUEST_ROW_H / 2;
     ctx.font = "10px 'Segoe UI', sans-serif";
     ctx.fillStyle = quest.completed ? "#72d653" : COLORS.textMuted;
-    ctx.fillText(quest.completed ? "✓" : "○", 10, y);
+    ctx.fillText(quest.unknown ? "—" : quest.completed ? "✓" : "○", 10, y);
     const text = state.questLang === "vi" ? (quest.textVi ?? quest.text) : quest.text;
     ctx.fillStyle = quest.completed ? "#72d653" : COLORS.text;
     ctx.fillText(truncate(ctx, text, maxW), 24, y);

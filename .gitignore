@@ -5,3 +5,8 @@ src-tauri/gen/schemas/
 *.log
 .wrangler/
 .dev.vars
+# Windows Explorer metadata
+desktop.ini
+.tools/
+docs/qa-output/
+phat-hanh/

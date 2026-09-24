@@ -1,20 +1,20 @@
-// Colours and sizes carried over from the original theme.py — survival-HUD
-// dark ground with an amber accent. No display strings here (see i18n/).
+// Gateway Tactical palette shared by Leaflet and the transparent minimap.
+// Magenta remains exclusive to the player; blue is interactive/navigation.
 
 export const COLORS = {
-  bg: "#11150e",
-  panel: "#191f14",
-  panelBorder: "#333c26",
-  text: "#eae6d6",
-  textMuted: "#a3aa8c",
-  accent: "#e8a33d",
+  bg: "#07090d",
+  panel: "#101620",
+  panelBorder: "#263348",
+  text: "#f7f9fc",
+  textMuted: "#9cabc0",
+  accent: "#42a5ff",
   player: "#ff3b8b", // pink: collides with no terrain colour
   // Electric yellow + double outline: the self-marker must outrank every
   // waypoint/POI dot and never be mistaken for the (softer yellow) trail.
   playerArrow: "#ffe600",
-  playerArrowOutline: "#10130c",
-  trail: "#ffcc55",
-  waypoint: "#4fc3f7",
+  playerArrowOutline: "#07090d",
+  trail: "#ffbd38",
+  waypoint: "#42a5ff",
 } as const;
 
 // Keys match pois_gateway.json layer keys (+ image-overlay layer keys).
@@ -48,6 +48,12 @@ export const LAYER_ORDER = [
   "animal",
   "landmark",
   "region",
+  "plants",
+  "atlas_animals",
+  "atlas_locations",
+  "atlas_labels",
+  "atlas_zones",
+  "atlas_spawns",
 ];
 
 // Waypoint icon presets (offered in the naming prompt). A waypoint whose

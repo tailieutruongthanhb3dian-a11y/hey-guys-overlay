@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+<title>Hey Guys Overlay</title><desc>Biểu tượng bàn tay chào và khủng long trắng trong vòng tím của Hey Guys Team.</desc>
+<rect x="16" y="16" width="480" height="480" rx="112" fill="#101014"/>
+<circle cx="256" cy="256" r="211" stroke="#a855b5" stroke-width="20" stroke-dasharray="870 70 310 76" transform="rotate(-42 256 256)"/>
+<circle cx="256" cy="256" r="185" stroke="#d8a9df" stroke-width="3"/>
+<path d="M92 162A191 191 0 0 1 168 91M420 345A191 191 0 0 1 346 420" stroke="#f7f8f8" stroke-width="7" stroke-linecap="round"/>
+<g transform="rotate(-16 308 237)">
+<path d="M269 328C250 319 239 303 230 282L207 245C201 234 212 223 222 231L247 255L247 170C247 155 268 155 268 170V221L277 139C279 124 300 127 298 142L293 220L311 130C314 116 335 122 331 137L316 223L339 154C344 140 363 147 359 161L338 240L357 204C364 191 382 201 375 214L350 278C341 301 326 318 312 329V347H269Z" fill="#f7f8f8"/>
+<path d="M276 282C281 264 298 255 319 260" stroke="#101014" stroke-width="9" stroke-linecap="round"/>
+</g>
+<path d="M130 334C103 325 92 304 96 279C100 252 124 237 150 242L183 251L208 270L193 289L165 282L173 301L191 311L181 327L157 310L144 291C130 290 122 299 128 309C135 323 160 331 174 347C186 361 190 379 184 394L160 383C164 364 149 346 130 334Z" fill="#f7f8f8"/>
+<path d="M155 258L172 266L155 273Z" fill="#101014"/>
+<path d="M202 379C237 401 283 403 321 383" stroke="#a855b5" stroke-width="12" stroke-linecap="round"/>
+</svg>

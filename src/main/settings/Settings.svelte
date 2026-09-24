@@ -94,7 +94,7 @@
 </script>
 
 {#if settings}
-  <div class="mx-auto max-w-2xl space-y-6 overflow-y-auto p-6">
+  <div class="settings-page mx-auto max-w-3xl space-y-4 overflow-y-auto p-6">
     <!-- Language -->
     <section>
       <h2 class="mb-2 font-semibold" style="color: var(--color-accent)">
@@ -115,12 +115,37 @@
       </div>
     </section>
 
-    <!-- Minimap -->
+    <section>
+      <h2 class="mb-2 font-semibold">Nguồn vị trí người chơi</h2>
+      <select aria-label="Nguồn vị trí" value={String(settings.position_source ?? "era")} onchange={e => void patch({position_source:e.currentTarget.value})}>
+        <option value="era">ERA Gaming VN</option><option value="islepilot">IslePilot</option><option value="clipboard">Sao chép tọa độ trong game</option>
+      </select>
+      <p class="mt-2 text-sm">Chọn đúng server đang chơi để bản đồ lớn và minimap dùng cùng một nguồn tọa độ.</p>
+    </section>
+    <!-- Cài đặt HUD và minimap. -->
     <section>
       <h2 class="mb-2 font-semibold" style="color: var(--color-accent)">
         {$t("settings.minimap")}
       </h2>
       <div class="space-y-3">
+        <button class="rounded border px-3 py-2" onclick={() => void patch({minimap:{free_position:true,require_game:false,hide_with_app:false,click_through:false,visible:true}})}>Đặt HUD ngoài cửa sổ game</button>
+        <p class="text-sm">Bấm nút trên rồi kéo riêng minimap hoặc ô chỉ số đến vị trí bất kỳ. Kéo góc vàng dưới-phải để đổi kích thước; bật “chuột xuyên qua” sau khi đặt xong.</p>
+        <label class="flex gap-2 text-sm"><input type="checkbox" checked={settings.minimap.free_position ?? false} onchange={e => void patch({minimap:{free_position:e.currentTarget.checked}})}/>Vị trí tự do, không bám góc game</label>
+        <label class="flex gap-2 text-sm"><input type="checkbox" checked={settings.minimap.hide_with_app ?? true} onchange={e => void patch({minimap:{hide_with_app:e.currentTarget.checked}})}/>Ẩn HUD khi mở cửa sổ app</label>
+        <label class="flex gap-2 text-sm"><input type="checkbox" checked={settings.minimap.show_names ?? true} onchange={e => void patch({minimap:{show_names:e.currentTarget.checked}})}/>Hiện tên đồng đội trên minimap</label>
+        {#if settings.minimap.free_position}
+          <div class="flex gap-3">{#each ["desktop_x","desktop_y"] as axis}<label>{axis === "desktop_x" ? "X desktop" : "Y desktop"}<input class="w-24 border" type="number" value={Number(settings.minimap[axis as "desktop_x" | "desktop_y"] ?? 0)} onchange={e => {const v=Number(e.currentTarget.value);if(Number.isFinite(v))void patch({minimap:{[axis]:Math.round(v)}});}}/></label>{/each}</div>
+          <button class="rounded border px-3 py-2" onclick={() => void patch({minimap:{desktop_x:40,desktop_y:80}})}>Đưa HUD về góc desktop</button>
+          <div class="rounded border p-3" style="border-color:var(--color-border)">
+            <div class="mb-2 text-sm font-semibold">Ô thông tin khủng long</div>
+            <div class="flex gap-3">
+              {#each [["desktop_x","X"],["desktop_y","Y"],["width_px","Rộng"]] as [key,label]}
+                <label class="text-xs">{label}<input class="ml-1 w-20 border" type="number" value={Number(settings.dino_hud?.[key as "desktop_x" | "desktop_y" | "width_px"] ?? (key === "width_px" ? 280 : 80))} onchange={e => {const v=Number(e.currentTarget.value);if(Number.isFinite(v))void patch({dino_hud:{[key]:Math.round(v)}});}}/></label>
+              {/each}
+            </div>
+            <button class="mt-2 rounded border px-3 py-1 text-xs" onclick={() => void patch({dino_hud:{desktop_x:320,desktop_y:80,width_px:280}})}>Đưa ô chỉ số về mặc định</button>
+          </div>
+        {/if}
         <label class="flex cursor-pointer items-center gap-2 text-sm">
           <input
             type="checkbox"

@@ -1,41 +1,20 @@
 <script lang="ts">
-  // Donate tab: the VietQR + bank info that used to live in the Footer
-  // popup, promoted to its own tab.
-  import { t } from "$lib/i18n";
-  import qrDonate from "../../assets/qr_donate.png";
-
-  const BANK_ACCOUNT = "8866886767";
-  const BANK_INFO = "Techcombank · TRAN QUOC TOAN";
-
-  let copied = $state(false);
-
-  async function copyStk() {
-    try {
-      await navigator.clipboard.writeText(BANK_ACCOUNT);
-      copied = true;
-      setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard API unavailable: leave the number visible to copy by hand.
-    }
-  }
+  import { locale } from "$lib/i18n";
+  import { openUrl } from "@tauri-apps/plugin-opener";
+  import logo from "../../assets/hey-guys-logo.svg";
 </script>
-
-<div class="mx-auto max-w-md p-8 text-center">
-  <h2 class="mb-1 text-xl font-semibold" style="color: var(--color-accent)">
-    {$t("donate.title")}
-  </h2>
-  <p class="mb-5 text-sm" style="color: var(--color-muted)">{$t("donate.hint")}</p>
-  <img src={qrDonate} alt="VietQR" class="mx-auto mb-5 w-72 rounded-lg bg-white p-2" />
-  <div class="mb-1 font-mono text-2xl font-semibold tracking-wider">
-    {BANK_ACCOUNT}
+<section class="surface-card mx-auto my-8 max-w-xl border p-8" style="border-radius:12px; border-color:var(--color-border)">
+  <img src={logo} alt="Hey Guys Team" width="96" height="96" class="mb-6" />
+  <h1 class="text-2xl font-semibold">Hey Guys Overlay</h1>
+  <p class="mt-2 text-sm" style="color:var(--color-muted)">The Isle: Evrima · v{__APP_VERSION__}</p>
+  <div class="mt-6 border-t pt-6" style="border-color:var(--color-border)">
+    <p class="text-sm" style="color:var(--color-muted)">{$locale === "vi" ? "Phát triển bởi" : "Developed by"}</p>
+    <p class="mt-2 text-xl font-semibold">Thanh Chillil</p>
+    <p class="mt-1">Hey Guys Team</p>
+    <p class="mt-6 text-sm leading-relaxed" style="color:var(--color-muted)">{$locale === "vi" ? "Bản đồ, đồng đội và công cụ hỗ trợ hành trình sinh tồn của cộng đồng Hey Guys." : "Maps, squad tools and survival assistance for the Hey Guys community."}</p>
   </div>
-  <div class="mb-4 text-sm" style="color: var(--color-muted)">{BANK_INFO}</div>
-  <button
-    class="cursor-pointer rounded px-4 py-2 text-sm font-medium"
-    style="background: {copied ? '#72d653' : 'var(--color-accent)'}; color: var(--color-bg)"
-    onclick={() => void copyStk()}
-  >
-    {copied ? $t("donate.copied") : $t("donate.copy_stk")}
-  </button>
-  <p class="mt-6 text-sm" style="color: var(--color-muted)">{$t("donate.thanks")}</p>
-</div>
+  <div class="mt-6 border-t pt-6 text-xs leading-relaxed" style="border-color:var(--color-border);color:var(--color-muted)">
+    <p>{$locale === "vi" ? "Được tùy biến từ mã nguồn TheIsle Overlay của Trần Quốc Toản và các bên đóng góp. Dữ liệu trò chơi, bản đồ và dịch vụ thuộc các chủ sở hữu tương ứng." : "Customized from TheIsle Overlay by Trần Quốc Toản and contributors. Game data, maps and services belong to their respective owners."}</p>
+    <button class="mt-3 cursor-pointer underline" onclick={() => void openUrl("https://github.com/toantranct/theisle-overlay")}>{$locale === "vi" ? "Mã nguồn nền tảng" : "Upstream source"}</button>
+  </div>
+</section>

@@ -19,6 +19,7 @@
     onDinoAuthExpired,
     onDinoLoginFailed,
     onDinoLoginOk,
+    onDinoLoginStarted,
     onDinoUpdate,
     patchSettings,
     type DinoStatBar,
@@ -50,6 +51,7 @@
     const st = await islepilotState();
     loggedIn = st.loggedIn;
     authMode = st.authMode;
+    loginBusy = st.loginActive;
     update = st.lastUpdate ?? update;
   }
 
@@ -61,12 +63,19 @@
       const st = await islepilotState();
       loggedIn = st.loggedIn;
       authMode = st.authMode;
+      loginBusy = st.loginActive;
       serverOpen = !st.loggedIn;
       update = st.lastUpdate;
       await bag.add(
         onDinoUpdate((u) => {
           update = u;
           authExpired = false;
+        }),
+      );
+      await bag.add(
+        onDinoLoginStarted(() => {
+          loginBusy = true;
+          loginError = false;
         }),
       );
       await bag.add(
@@ -80,9 +89,9 @@
         }),
       );
       await bag.add(
-        onDinoLoginFailed(() => {
+        onDinoLoginFailed((reason) => {
           loginBusy = false;
-          loginError = true;
+          loginError = reason !== "cancelled";
         }),
       );
       await bag.add(
@@ -177,7 +186,7 @@
 </script>
 
 {#if settings}
-  <div class="mx-auto max-w-2xl space-y-5 p-6">
+  <div class="dino-page mx-auto max-w-3xl space-y-5 p-6">
     <section>
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold" style="color: var(--color-accent)">
@@ -202,61 +211,79 @@
     <!-- Login (collapsed once signed in) -->
     {#if serverOpen}
     <section
-      class="rounded border p-3"
+      class="steam-connect-card rounded border p-5"
       style="border-color: var(--color-border); background: var(--color-panel)"
     >
       <!-- Primary: token mode — one Steam login for every server -->
-      <div class="mb-1 text-sm font-semibold" style="color: var(--color-accent)">
-        {$t("dino.token_login")}
+      <div class="steam-login-intro">
+        <div class="steam-login-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M11.98 2a10 10 0 0 0-9.97 9.2l5.36 2.22a2.8 2.8 0 0 1 1.58-.49l2.39-3.47v-.05a3.72 3.72 0 1 1 3.72 3.72h-.08l-3.42 2.44a2.81 2.81 0 1 1-5.46.87L2.3 14.86A10 10 0 1 0 11.98 2Zm-4.84 15.87-1.23-.51a2.1 2.1 0 0 0 1.17 1.09 2.07 2.07 0 0 0 2.71-1.1 2.05 2.05 0 0 0-1.08-2.69 2 2 0 0 0-.82-.16l1.27.53a1.52 1.52 0 0 1-1.17 2.8l-.87-.36Zm7.92-5.98a2.48 2.48 0 1 0 0-4.96 2.48 2.48 0 0 0 0 4.96Zm0-.62a1.86 1.86 0 1 1 0-3.72 1.86 1.86 0 0 1 0 3.72Z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="steam-eyebrow">STEAM · ISLEPILOT</div>
+          <h3 class="steam-login-title">{$t("dino.token_login")}</h3>
+          <p class="steam-login-copy">{$t("dino.token_login_hint")}</p>
+        </div>
       </div>
-      <p class="mb-2 text-xs leading-relaxed" style="color: var(--color-muted)">
-        {$t("dino.token_login_hint")}
-      </p>
       {#if authExpired}
-        <p class="mb-2 text-sm" style="color: #ff8a80">{$t("dino.auth_expired")}</p>
+        <p class="auth-message error" role="alert">{$t("dino.auth_expired")}</p>
       {/if}
       {#if loginError}
-        <p class="mb-2 text-sm" style="color: #ff8a80">{$t("dino.login_failed")}</p>
+        <p class="auth-message error" role="alert">{$t("dino.login_failed")}</p>
       {/if}
-      <div class="flex items-center gap-3">
+      <div aria-live="polite">
         {#if loggedIn && authMode === "token" && !authExpired}
-          <span class="text-sm" style="color: #72d653">✓ {$t("dino.logged_in")}</span>
-          <button
-            class="cursor-pointer rounded border px-3 py-1 text-sm"
-            style="border-color: var(--color-border)"
-            onclick={() => void logout()}
-          >
-            {$t("dino.logout")}
-          </button>
+          <div class="steam-connected-panel">
+            <span class="steam-connected-icon" aria-hidden="true">✓</span>
+            <div>
+              <strong>{$t("dino.logged_in")}</strong>
+              <span>{$t("dino.connected_hint")}</span>
+            </div>
+            <button
+              class="ml-auto cursor-pointer rounded border px-3 py-1 text-sm"
+              style="border-color: var(--color-border)"
+              onclick={() => void logout()}
+            >
+              {$t("dino.logout")}
+            </button>
+          </div>
         {:else}
           <button
-            class="cursor-pointer rounded px-3 py-1 text-sm font-medium disabled:opacity-50"
-            style="background: var(--color-accent); color: var(--color-bg)"
+            class="steam-login-primary cursor-pointer rounded px-4 py-2 font-semibold disabled:opacity-50"
+            style="background: var(--color-accent); color: white"
             disabled={loginBusy}
+            aria-busy={loginBusy}
             onclick={() => void tokenLogin()}
           >
-            {$t("dino.login")}
+            {#if loginBusy}<span class="button-spinner" aria-hidden="true"></span>{/if}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.98 2a10 10 0 0 0-9.97 9.2l5.36 2.22a2.8 2.8 0 0 1 1.58-.49l2.39-3.47v-.05a3.72 3.72 0 1 1 3.72 3.72h-.08l-3.42 2.44a2.81 2.81 0 1 1-5.46.87L2.3 14.86A10 10 0 1 0 11.98 2Z"/></svg>
+            {loginBusy ? $t("app.steam_connecting") : $t("dino.login")}
           </button>
           {#if loginBusy}
-            <span class="text-sm" style="color: var(--color-muted)">
-              {$t("dino.login_wait")}
-            </span>
-            <button
-              class="cursor-pointer rounded border px-2 py-0.5 text-xs"
-              style="border-color: var(--color-border)"
-              onclick={() => void cancelLogin()}
-            >
-              {$t("dino.cancel_login")}
-            </button>
+            <div class="steam-login-wait">
+              <span>{$t("dino.login_wait")}</span>
+              <button class="cursor-pointer" onclick={() => void cancelLogin()}>
+                {$t("dino.cancel_login")}
+              </button>
+            </div>
           {/if}
+          <ul class="steam-benefits" aria-label={$t("dino.login_benefits")}>
+            <li><span>✓</span>{$t("dino.login_once")}</li>
+            <li><span>✓</span>{$t("dino.login_all_servers")}</li>
+            <li><span>✓</span>{$t("dino.login_secure")}</li>
+          </ul>
         {/if}
       </div>
 
       <!-- Manual token paste (escape hatch) -->
-      <details class="mt-3">
+      <details class="advanced-auth mt-4">
         <summary class="cursor-pointer text-xs" style="color: var(--color-muted)">
-          {$t("dino.token_paste")}
+          {$t("dino.advanced_login")}
         </summary>
+        <div class="advanced-auth-body">
+        <div class="mb-1 text-sm font-semibold">{$t("dino.token_paste")}</div>
         <p class="mb-2 mt-1 text-xs leading-relaxed" style="color: var(--color-muted)">
           {$t("dino.token_paste_hint")}
         </p>
@@ -278,10 +305,11 @@
         >
           {tokenBusy ? $t("dino.token_checking") : $t("dino.token_save")}
         </button>
+        </div>
       </details>
 
       <!-- Legacy fallback: per-server URL + cookie -->
-      <details class="mt-3 border-t pt-3" style="border-color: var(--color-border)">
+      <details class="advanced-auth mt-2" style="border-color: var(--color-border)">
         <summary class="cursor-pointer text-xs font-semibold" style="color: var(--color-muted)">
           {$t("dino.legacy_section")}
         </summary>

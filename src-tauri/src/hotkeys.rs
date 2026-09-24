@@ -333,6 +333,21 @@ fn dispatch(app: &AppHandle, action: &str) {
             }
         },
         "mark_here" => mark_here(app),
+        "cycle_layout" => {
+            let state = app.state::<AppState>();
+            let patch = {
+                let s = state.settings.lock_safe();
+                let names = ["Khám phá", "Đi cùng đội", "Tối giản"];
+                let saved: Vec<_> = names.iter().filter(|name| s["companion"]["layouts"][**name].is_object()).collect();
+                if saved.is_empty() { return; }
+                let current = s["companion"]["layout"].as_str().unwrap_or("");
+                let index = saved.iter().position(|name| **name == current).map(|i| (i + 1) % saved.len()).unwrap_or(0);
+                let name = *saved[index];
+                let layout = &s["companion"]["layouts"][name];
+                serde_json::json!({"minimap":layout["minimap"],"dino_hud":layout["dino_hud"],"companion":{"layout":name}})
+            };
+            apply_settings_patch(app, patch);
+        }
         // Rescue for any webview whose input died: a global hotkey needs no
         // clicks, and a reload rebuilds the page (state comes back through
         // get_current_position/resync).
@@ -386,6 +401,7 @@ fn adjust_radius(app: &AppHandle, factor: f64) {
 /// stored in the user's file), so it is localised at creation time.
 fn mark_here(app: &AppHandle) {
     let state = app.state::<AppState>();
+    if settings::get_str(&state.settings.lock_safe(), &["position_source"], "era") == "era" && !crate::era::live_position_fresh() { return; }
     let current = {
         let tracker = state.tracker.lock_safe();
         tracker.current

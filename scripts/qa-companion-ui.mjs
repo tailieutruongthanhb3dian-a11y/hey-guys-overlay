@@ -1,0 +1,82 @@
+// Kiểm tra trình duyệt qua HTTP giả lập; tuyệt đối không gửi thao tác game thật.
+import { chromium } from '../.tools/qa/node_modules/playwright/index.mjs';
+import { readFile, mkdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+const site='https://heyguys-dashboard.pages.dev', bridge='http://127.0.0.1:17864';
+const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+await mkdir('docs/qa-output',{recursive:true});
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:980}}), errors=[],calls=[];
+ page.on('pageerror',e=>errors.push(String(e)));
+ let failed=false, eventId=0, unauthorized=false;
+ const settings={language:'vi',map:{basemap:'vulnona'},minimap:{visible:true,require_game:false},layers:{},islepilot:{enabled:false}};
+ const live=()=>({status:'online',receivedAt:Date.now(),intervalMs:1000,data:{mapSource:'vulnona',player:{name:'Người chơi QA',class:'Rex',prime:{available:true,total:10,completed:2,eligible:false,conditions:[{id:1,name:'Nhiệm vụ kiểm thử',complete:true},{id:2,name:'Nhiệm vụ tiếp theo',complete:true},{id:3,name:'Chưa xong',complete:false}]},healthPercent:100,staminaPercent:14,hungerPercent:53,thirstPercent:71,growthPercent:29,location:{x:0,y:0,z:20170}},mapFriends:[]}});
+ await page.route(`${site}/**`,async route=>{
+   const filename=decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\//,'')||'index.html';
+   if(filename.includes('..'))return route.abort();
+   const mime=filename.endsWith('.js')?'text/javascript':filename.endsWith('.css')?'text/css':filename.endsWith('.svg')?'image/svg+xml':filename.endsWith('.html')?'text/html':'application/octet-stream';
+   try {await route.fulfill({body:await readFile(path.join('dist',filename)),contentType:mime});} catch {await route.fulfill({status:404});}
+ });
+ await page.route(`${bridge}/**`,async route=>{
+   const headers={'Access-Control-Allow-Origin':site,'Access-Control-Allow-Headers':'authorization,content-type','Access-Control-Allow-Methods':'POST,GET,OPTIONS','Access-Control-Allow-Private-Network':'true'};
+   if(route.request().method()==='OPTIONS')return route.fulfill({status:200,headers});
+   if(failed)return route.abort();
+   if(unauthorized)return route.fulfill({status:401,headers,contentType:'application/json',body:JSON.stringify({error:'Pair expired'})});
+   const {command,args={}}=route.request().postDataJSON();calls.push({command,args});
+   assert.equal(route.request().headers().authorization,`Bearer ${'a'.repeat(64)}`);
+   let result=null,error;
+   if(command==='get_settings')result=settings;
+   else if(command==='data_status')result={basemapMinimap:true,basemapFullmap:true,pois:true};
+   else if(command==='islepilot_state')result={tokenPresent:false,loginActive:false};
+   else if(command==='get_fullscreen_mode')result=1;
+   else if(command==='era_live_state')result=live();
+   else if(command==='web_events')result=[{id:++eventId,event:'era://live',payload:live()}];
+   else if(command==='era_request')result=args.action==='friends'?{success:true,friends:[],incoming:[],outgoing:[]}:args.action==='session'?{success:true,user:{steamId:'76561198000000001',name:'QA'}}:{success:true};
+   else if(command==='era_garage_get')result={data:{slotCount:3,onlinePawn:false,isVip:false,slots:[{slot:1,stored:true,storedDino:{species:'Raptor',growthPercent:85,stateHash:'b'.repeat(64)}}]}};
+   else if(command==='era_skin_policy')result={success:true,available:true,arbitraryHex:true,cooldownRemainingSeconds:0};
+   else if(command==='era_skin_apply')result={success:true,cooldownRemainingSeconds:300};
+   else if(command==='era_suicide_status')result={success:true,available:true,identityReady:true,identitySource:'player-cache'};
+   else if(command==='era_self_suicide')result={success:true};
+   else if(command==='get_map_info')result={imageWidthPx:7800,imageHeightPx:7817,pxPerMX:.7,pxPerMY:.7,source:'vulnona',overlays:[]};
+   else if(command==='get_basemap_paths')result={source:'vulnona',minimap:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',fullmap:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'};
+   else if(['get_pois_render','list_waypoints_px','list_waypoints'].includes(command))result=[];
+   else if(command==='patch_settings'){Object.assign(settings,args.patch);result=settings;}
+   else if(['get_current_trail','get_previous_trail'].includes(command))result={segmentsCm:[],segmentsPx:[]};
+   else if(command==='era_atlas'||command==='islepilot_cdn_asset')error='Fixture has no downloaded asset';
+   await route.fulfill({headers,contentType:'application/json',body:JSON.stringify(error?{error}:{result})});
+ });
+ await page.goto(site);
+ await page.getByRole('heading',{name:/Cùng ứng dụng/}).waitFor();
+ assert.equal(calls.length,0,'Không tự kết nối khi chưa ghép đôi');
+ await page.locator('#pair-code').fill('bad-code');await page.getByRole('button',{name:'Kết nối',exact:true}).click();
+ assert.equal(calls.length,0,'Mã không hợp lệ không gọi API');
+ await page.screenshot({path:'docs/qa-output/web-pairing.png'});
+ await page.locator('#pair-code').fill('a'.repeat(64));await page.getByRole('button',{name:'Kết nối',exact:true}).click();
+ await page.locator('.tab-nav').waitFor();
+ await page.getByRole('button',{name:'Trợ lý',exact:true}).click();
+ await page.getByRole('heading',{name:'Chuẩn bị tốt. Chơi chủ động.'}).waitFor();
+ await page.getByRole('button',{name:'Bắt đầu ghi phiên',exact:true}).click();
+ await page.waitForTimeout(2200);
+ await page.getByRole('button',{name:'Kết thúc & lưu tổng kết',exact:true}).click();
+ assert.equal(await page.locator('.companion article').count(),1);
+ assert.match(await page.locator('.companion article').innerText(),/Người chơi QA/);
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Xuất ảnh tổng kết',exact:true}).click();
+ assert.match((await download).suggestedFilename(),/HeyGuys-.*\.png/);
+ await page.getByRole('button',{name:'C3',exact:true}).click();
+ assert.deepEqual(calls.findLast(c=>c.command==='patch_settings').args.patch.companion.pinned,[3]);
+ await page.getByRole('button',{name:'Lưu bố cục hiện tại',exact:true}).first().click();
+ assert.ok(calls.findLast(c=>c.command==='patch_settings').args.patch.companion.layouts['Khám phá']);
+ await page.screenshot({path:'docs/qa-output/companion-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.screenshot({path:'docs/qa-output/companion-mobile.png',fullPage:true});
+ failed=true;
+ await page.locator('#web-disconnected').waitFor();
+ await page.waitForTimeout(1200);
+ assert.equal(await page.getByRole('button',{name:'Bắt đầu ghi phiên',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'Lưu vị trí',exact:true}).isDisabled(),true);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: companion UI, recording and summary, PNG export, Prime pin, layout save, mobile, stale controls.');
+} finally {await browser.close();}

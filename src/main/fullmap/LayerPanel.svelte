@@ -4,6 +4,7 @@
   import type { NearestWaypoint, PositionUpdate, Waypoint, WaypointPx } from "$lib/api";
   import { compassLabel, formatDistance, locale, t } from "$lib/i18n";
   import { LAYER_COLORS, LAYER_ORDER } from "$lib/theme";
+  import { normalizeSearch } from "$lib/search";
 
   let {
     available,
@@ -15,6 +16,7 @@
     places,
     islepilotNote = null,
     ontoggle,
+    onbatchlayers,
     ontogglezonelabels,
     onrename,
     ondelete,
@@ -34,6 +36,7 @@
     /** Why IslePilot server POIs are unavailable (already localized). */
     islepilotNote?: string | null;
     ontoggle: (key: string, visible: boolean) => void;
+    onbatchlayers: (patch: Record<string, boolean>) => Promise<void>;
     ontogglezonelabels: (visible: boolean) => void;
     onrename: (id: string, name: string) => void;
     ondelete: (wp: Waypoint) => void;
@@ -54,13 +57,13 @@
   const looksLikeCoords = (q: string) => /\d[\d.,\s−-]*\d/.test(q);
 
   const results = $derived.by(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearch(query);
     if (!q) return [];
     return [
       ...waypoints.map((w) => ({ label: w.name, px: w.px, py: w.py, kind: "wp" })),
       ...places,
     ]
-      .filter((p) => p.label.toLowerCase().includes(q))
+      .filter((p) => normalizeSearch(p.label).includes(q))
       .slice(0, 6);
   });
 
@@ -134,10 +137,31 @@
       // Storage unavailable: the toggle still works for this session.
     }
   }
+  let previousLayers = $state<Record<string, boolean> | null>(null);
+  let layersBusy = $state(false);
+  let layersError = $state(false);
+  async function batchLayers(visible: boolean | null) {
+    if (layersBusy) return;
+    const keys = LAYER_ORDER.filter((key) => available.includes(key));
+    const before = Object.fromEntries(keys.map((key) => [key, layers[key] ?? true]));
+    const patch = visible === null ? previousLayers :
+      Object.fromEntries(keys.map((key) => [key, visible]));
+    if (!patch) return;
+    layersBusy = true;
+    layersError = false;
+    try {
+      await onbatchlayers(patch);
+      previousLayers = visible === null ? null : before;
+    } catch {
+      layersError = true;
+    } finally {
+      layersBusy = false;
+    }
+  }
 </script>
 
 <aside
-  class="flex w-56 shrink-0 flex-col gap-3 overflow-y-auto p-3"
+  class="map-sidebar flex w-64 shrink-0 flex-col gap-3 overflow-y-auto p-3"
   style="background: var(--color-panel); border-left: 1px solid var(--color-border)"
 >
   <section>
@@ -145,6 +169,7 @@
       class="w-full rounded border px-2 py-1 text-sm"
       style="border-color: var(--color-border); background: var(--color-bg); color: var(--color-text)"
       placeholder={$t("search.placeholder")}
+      aria-label={$t("search.placeholder")}
       bind:value={query}
       onkeydown={onSearchKey}
     />
@@ -215,11 +240,18 @@
       </span>
     </button>
     {#if layersOpen}
+      <div class="layer-batch">
+        <button disabled={layersBusy || !available.length} onclick={() => void batchLayers(true)}>{$t("layers.show_all")}</button>
+        <button disabled={layersBusy || !available.length} onclick={() => void batchLayers(false)}>{$t("layers.hide_all")}</button>
+        <button disabled={layersBusy || !previousLayers} onclick={() => void batchLayers(null)}>{$t("layers.undo")}</button>
+      </div>
+      {#if layersError}<p role="alert">{$t("layers.save_failed")}</p>{/if}
       {#each LAYER_ORDER as key (key)}
         {#if available.includes(key)}
           <label class="flex cursor-pointer items-center gap-2 py-1 text-sm">
             <input
               type="checkbox"
+              disabled={layersBusy}
               class="size-3.5 accent-current"
               style="color: {LAYER_COLORS[key]}"
               checked={layers[key] ?? true}
@@ -346,6 +378,7 @@
               <button
                 class="shrink-0 cursor-pointer px-1 text-xs opacity-70 hover:opacity-100"
                 title={$t("wp.rename")}
+                aria-label={$t("wp.rename")}
                 onclick={() => startRename(wp)}
               >
                 ✎
@@ -353,6 +386,7 @@
               <button
                 class="shrink-0 cursor-pointer px-1 text-xs opacity-70 hover:opacity-100"
                 title={$t("wp.remove")}
+                aria-label={$t("wp.remove")}
                 onclick={() => ondelete(wp)}
               >
                 ✕

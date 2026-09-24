@@ -15,10 +15,28 @@
       canvas {
         display: block;
       }
+      #resize-handle {
+        position: fixed;
+        right: 2px;
+        bottom: 2px;
+        width: 18px;
+        height: 18px;
+        border-right: 2px solid rgba(232, 163, 61, 0.95);
+        border-bottom: 2px solid rgba(232, 163, 61, 0.95);
+        opacity: 0;
+        pointer-events: none;
+        cursor: nwse-resize;
+      }
+      body.editing #resize-handle { opacity: 1; pointer-events:auto; }
+      #zoom-controls{position:fixed;right:8px;bottom:30px;display:flex;flex-direction:column;gap:4px;z-index:3}
+      #zoom-controls button{width:26px;height:25px;border:1px solid #526178;border-radius:6px;background:#0b101bea;color:#fff;font:bold 17px 'Segoe UI';cursor:pointer}
+      body:not(.interactive) #zoom-controls { display:none; }
     </style>
   </head>
   <body>
     <canvas id="minimap"></canvas>
+    <div id="zoom-controls"><button id="zoom-in" aria-label="Phóng to" title="Phóng to · Cuộn lên">+</button><button id="zoom-out" aria-label="Thu nhỏ" title="Thu nhỏ · Cuộn xuống">−</button></div>
+    <div id="resize-handle" aria-hidden="true"></div>
     <script type="module" src="/src/minimap/main.ts"></script>
   </body>
 </html>

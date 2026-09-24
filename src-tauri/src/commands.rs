@@ -168,6 +168,7 @@ pub fn add_waypoint_at_pixel(
 /// The "mark here" hotkey action: drop a waypoint at the current position.
 #[tauri::command]
 pub fn add_waypoint_here(app: AppHandle, state: State<AppState>, name: String) -> Option<Waypoint> {
+    if settings::get_str(&state.settings.lock_safe(), &["position_source"], "era") == "era" && !crate::era::live_position_fresh() { return None; }
     telemetry::counters::track("waypoint_add");
     let current = state.tracker.lock_safe().current?;
     let wp = store::new_waypoint(&name, current.x, current.y, current.z, None);

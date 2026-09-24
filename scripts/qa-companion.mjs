@@ -1,0 +1,28 @@
+// Kiểm tra lỗi dữ liệu, tọa độ, chống lặp cảnh báo và ngắt quãng hành trình.
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+const bundle=await build({entryPoints:['src/lib/companion.ts'],bundle:true,write:false,format:'esm',platform:'node'});
+const {config,isFresh,playerPoint,alerts,AlertGate,nearestFriend,destination,focusedPrime,startJourney,sampleJourney,routePath,restoreJourney}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const live=(at,x=0,y=0)=>({status:'online',receivedAt:at,data:{player:{name:'QA',class:'Rex',location:{x,y},healthPercent:10,hungerPercent:NaN,prime:{available:true,completed:1,conditions:[{id:1,complete:true},{id:2,complete:false}]}},mapFriends:[{name:'Bạn',steamId:'1',xCm:10000,yCm:0}]}});
+assert.equal(isFresh(live(1000),6000),false);
+assert.equal(isFresh(live(1001),1000),true);
+assert.equal(isFresh(live(3000),1000),false);
+assert.deepEqual(playerPoint(live(1000,100,200),1000),{xCm:200,yCm:100});
+const c=config({cooldown:-1,thresholds:{healthPercent:Infinity},pinned:[2,2,99,'1'],primeFocus:true});
+assert.equal(c.cooldown,15);assert.equal(c.thresholds.healthPercent,20);assert.deepEqual(c.pinned,[2]);
+assert.equal(alerts(live(1000),c,1000).length,1);assert.equal(alerts(live(1000),c,6000).length,0);
+const gate=new AlertGate();assert.equal(gate.take(true,1000,60),true);assert.equal(gate.take(true,2000,60),false);assert.equal(gate.take(true,61000,60),true);
+assert.equal(nearestFriend(live(1000),1000).distanceM,100);
+assert.equal(destination(live(1000),{minimap:{era_target:'missing'}},1000),null);
+assert.equal(focusedPrime(live(1000),c,1000)[0].id,2);
+let j=startJourney(live(1000),1000);sampleJourney(j,live(1000),1000);sampleJourney(j,live(3000,0,10000),3000);assert.equal(j.distance,100);assert.equal(j.observedMs,2000);
+sampleJourney(j,live(3000,0,20000),3000);assert.equal(j.distance,100,'Không ghi dữ liệu lặp');
+sampleJourney(j,live(13000,0,50000),13000);assert.equal(j.distance,100,'Không nối qua khoảng mất dữ liệu');assert.equal(j.route.at(-1).move,true);
+sampleJourney(j,live(15000,0,5000000),15000);assert.equal(j.distance,100,'Không cộng dịch chuyển bất thường');
+assert.ok(!routePath(j.route).includes('NaN'));
+for(let i=1;i<1900;i++)sampleJourney(j,live(15000+i*2000,0,5000000+i*100),15000+i*2000);
+assert.ok(j.route.length<=1800);assert.ok(routePath(j.route).includes('L'),'Giảm mẫu vẫn giữ đường liên tục');
+assert.equal(restoreJourney({}),null);
+assert.equal(restoreJourney({...j,observedMs:-1}),null);
+assert.equal(restoreJourney({...j,route:[null,...j.route]}).route.length,j.route.length);
+console.log('PASS: coordinate conversion, stale/future data, alert cooldown, Prime priority, missing target, duplicate/gap/teleport filtering, bounded route.');

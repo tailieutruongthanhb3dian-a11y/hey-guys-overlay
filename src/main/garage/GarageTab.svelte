@@ -16,8 +16,11 @@
     islepilotGarageRestore,
     islepilotGarageSell,
     islepilotState,
+    islepilotTokenLogin,
+    onDinoLoginFailed,
     listenerBag,
     onDinoLoginOk,
+    onDinoLoginStarted,
     type GarageDino,
     type GarageState,
   } from "$lib/api";
@@ -30,6 +33,7 @@
 
   let rootEl: HTMLDivElement | undefined = $state();
   let loggedIn = $state(false);
+  let authBusy = $state(false);
   let authMode = $state<"token" | "legacy">("legacy");
   let garage = $state<GarageState | null>(null);
   let garageBusy = $state(false);
@@ -38,8 +42,14 @@
   let renamingId = $state<string | null>(null);
   let renameInput = $state("");
   let loadedAtMs = $state<number | null>(null);
-  /** Card ids whose viewer has been near the viewport at least once. */
+  /** Only the six most visible cards may own a WebGL viewer. */
   let seenIds = $state(new Set<string>());
+  let { visible = true } = $props<{ visible?: boolean }>();
+  const visibleCards = new Map<string, number>();
+  function refreshViewers() {
+    seenIds = new Set([...visibleCards].sort((a, b) => b[1] - a[1])
+      .slice(0, 6).map(([id]) => id));
+  }
 
   const tokenReady = $derived(loggedIn && authMode === "token");
 
@@ -52,15 +62,23 @@
       const st = await islepilotState();
       loggedIn = st.loggedIn;
       authMode = st.authMode;
+      authBusy = st.loginActive;
       if (st.loggedIn && st.authMode === "token") void loadGarage();
       await bag.add(
+        onDinoLoginStarted((mode) => {
+          if (mode === "token") authBusy = true;
+        }),
+      );
+      await bag.add(
         onDinoLoginOk(async () => {
+          authBusy = false;
           const fresh = await islepilotState();
           loggedIn = fresh.loggedIn;
           authMode = fresh.authMode;
           if (fresh.loggedIn && fresh.authMode === "token") void loadGarage();
         }),
       );
+      await bag.add(onDinoLoginFailed(() => (authBusy = false)));
     })();
     return () => bag.dispose();
   });
@@ -85,6 +103,15 @@
     } catch (e) {
       garageError = String(e);
       garage = null;
+    }
+  }
+
+  async function connectSteam() {
+    authBusy = true;
+    try {
+      await islepilotTokenLogin();
+    } catch {
+      authBusy = false;
     }
   }
 
@@ -143,26 +170,30 @@
   const dinoPalette = (d: GarageDino) =>
     paletteFrom(d.palette ?? (d as Record<string, unknown>).skin ?? null);
 
-  /** Svelte action: mark the card id "seen" once it nears the viewport, so
-   * its 3D viewer mounts lazily (and stays — the caches make it cheap). */
+  /** Release offscreen viewers; cached models remain available for scrolling back. */
   function inview(node: HTMLElement, id: string | null) {
     if (!id) return {};
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          seenIds.add(id);
-          seenIds = new Set(seenIds);
-          io.disconnect();
+        if (!visible) return;
+        for (const entry of entries) {
+          if (entry.isIntersecting) visibleCards.set(id, entry.intersectionRatio);
+          else visibleCards.delete(id);
         }
+        refreshViewers();
       },
-      { rootMargin: "150px" },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
     io.observe(node);
-    return { destroy: () => io.disconnect() };
+    return { destroy: () => {
+      io.disconnect();
+      visibleCards.delete(id);
+      refreshViewers();
+    } };
   }
 </script>
 
-<div class="mx-auto max-w-4xl space-y-4 p-6" bind:this={rootEl}>
+<div class="garage-page mx-auto max-w-5xl space-y-4 p-6" bind:this={rootEl}>
   <div class="flex items-center justify-between">
     <h2 class="text-lg font-semibold" style="color: var(--color-accent)">
       {$t("garage.title")}
@@ -197,10 +228,19 @@
   {#if !tokenReady}
     <!-- Not usable: explain why instead of showing dead buttons. -->
     <section
-      class="rounded border p-6 text-center"
+      class="garage-connect-empty rounded border p-6 text-center"
       style="border-color: var(--color-border); background: var(--color-panel)"
     >
       <p class="text-sm" style="color: var(--color-muted)">{$t("garage.need_token")}</p>
+      <button
+        class="steam-login-primary mx-auto mt-4 cursor-pointer rounded px-5 py-2 font-semibold disabled:opacity-50"
+        disabled={authBusy}
+        aria-busy={authBusy}
+        onclick={() => void connectSteam()}
+      >
+        {#if authBusy}<span class="button-spinner" aria-hidden="true"></span>{/if}
+        {authBusy ? $t("app.steam_connecting") : $t("dino.login")}
+      </button>
     </section>
   {:else}
     {#if loadedAtMs !== null}
@@ -234,20 +274,20 @@
           <p class="text-sm" style="color: var(--color-muted)">{$t("garage.empty")}</p>
         </section>
       {:else}
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="garage-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           {#each garage.dinos as dino, i (dinoId(dino) ?? i)}
             {@const id = dinoId(dino)}
             {@const sp = dinoSpecies(dino)}
             {@const growth = dinoGrowthPct(dino)}
             <div
-              class="overflow-hidden rounded border"
+              class="garage-card overflow-hidden rounded border"
               style="border-color: var(--color-border); background: var(--color-panel)"
               use:inview={id}
             >
               <!-- Compact 3D preview (lazy: mounts when the card scrolls in) -->
               {#if sp && hasModel(sp)}
                 {#if id && seenIds.has(id)}
-                  <DinoViewer3D species={sp} palette={dinoPalette(dino)} height={190} />
+                  <DinoViewer3D active={visible} species={sp} palette={dinoPalette(dino)} height={190} />
                 {:else}
                   <div style="height: 190px"></div>
                 {/if}

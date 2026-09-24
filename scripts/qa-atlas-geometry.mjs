@@ -1,0 +1,12 @@
+﻿import assert from 'node:assert/strict';
+import {atlasPoint,atlasImageAnchors,zonePoints} from '../src/lib/atlas-geometry.ts';
+const anchors=[{px:0,py:100,xCm:0,yCm:0},{px:100,py:100,xCm:0,yCm:100},{px:0,py:0,xCm:-100,yCm:0}];
+assert.deepEqual(atlasImageAnchors(anchors).map(a=>[a.px,a.py]),[[0,0],[100,0],[0,100]]);
+assert.equal(atlasPoint(anchors,20,80).py,20);
+assert.equal(zonePoints({shape_type:'circle',x1:0,y1:0,x2:3,y2:4})[0].x,5);
+assert.equal(zonePoints({shape_type:'ellipse',x1:0,y1:0,x2:4,y2:2,rotation:90})[0].y,3);
+assert.equal(zonePoints({shape_type:'point',x1:null,y1:0}).length,0);
+const data=await fetch('https://eragamingvn.net/live-map/assets/gateway-atlas-data.json?v=20260821b').then(r=>r.json());
+const missing=data.zones.filter(z=>z.is_active!==0&&zonePoints(z).length<2);
+assert.deepEqual(missing.map(z=>z.id),[]);
+console.log('PASS: ERA Y fix, point projection, circle radius, ellipse rotation, all '+data.zones.length+' zone geometries');

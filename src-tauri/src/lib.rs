@@ -7,6 +7,8 @@
 pub mod clipboard;
 pub mod commands;
 pub mod events;
+pub mod era;
+pub mod web_bridge;
 pub mod fetch;
 pub mod hotkeys;
 pub mod islepilot;
@@ -74,6 +76,20 @@ pub fn run(replay_file: Option<PathBuf>) {
         })
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
+            minimap::drag_hud,
+            minimap::resize_hud,
+            era::era_open,
+            web_bridge::web_bridge_pair,
+            era::era_live_state,
+            era::era_atlas,
+            era::era_finish_login,
+            era::era_request,
+            era::era_garage_get,
+            era::era_garage_action,
+            era::era_skin_policy,
+            era::era_skin_apply,
+            era::era_suicide_status,
+            era::era_self_suicide,
             commands::get_settings,
             commands::patch_settings,
             commands::get_current_position,
@@ -197,6 +213,8 @@ pub fn run(replay_file: Option<PathBuf>) {
                 state.hotkeys.restart(app.handle().clone());
             }
             islepilot::restart_poller(app.handle());
+            era::spawn_live(app.handle().clone());
+            web_bridge::spawn(app.handle().clone());
             // Last, and on its own thread: nothing above may wait on it.
             telemetry::spawn(app.handle());
             if let Some(path) = replay_file {

@@ -33,6 +33,7 @@ use parser::{MapPosition, PlayerStats};
 
 pub const DINO_UPDATE: &str = "dino://update";
 pub const DINO_AUTH_EXPIRED: &str = "dino://auth-expired";
+pub const DINO_LOGIN_STARTED: &str = "dino://login-started";
 pub const DINO_LOGIN_OK: &str = "dino://login-ok";
 pub const DINO_LOGIN_FAILED: &str = "dino://login-failed";
 
@@ -78,6 +79,7 @@ pub struct DinoUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct IslepilotState {
     pub logged_in: bool,
+    pub login_active: bool,
     /// "token" (central overlay API, one login for every server) or
     /// "legacy" (per-server cookie).
     pub auth_mode: String,
@@ -284,6 +286,7 @@ pub fn current_state(app: &AppHandle) -> IslepilotState {
     };
     IslepilotState {
         logged_in,
+        login_active: LOGIN_ACTIVE.load(Ordering::SeqCst),
         auth_mode: config.auth_mode,
         token_present,
         last_update: LAST_UPDATE.lock_safe().clone(),
@@ -336,7 +339,7 @@ fn ingest_map_position(app: &AppHandle, map: &MapPosition) {
     let py = pct_y / 100.0 * cal.image_height_px as f64;
     let (x_cm, y_cm) = pixel_to_world(px, py, cal);
     log::debug!("islepilot position: {pct_x:.2}%,{pct_y:.2}% -> {x_cm:.0},{y_cm:.0} cm");
-    pipeline::ingest_sample(app, x_cm, y_cm, 0.0);
+    ingest_selected_position(app, x_cm, y_cm, 0.0);
 }
 
 /// Keep `use_map_position` truthful to the server's capability: no live map
@@ -494,7 +497,7 @@ pub fn restart_poller(app: &AppHandle) {
                                         log::debug!(
                                             "islepilot markers api: {x_cm:.0},{y_cm:.0} cm"
                                         );
-                                        pipeline::ingest_sample(&app, x_cm, y_cm, 0.0);
+                                        ingest_selected_position(&app, x_cm, y_cm, 0.0);
                                     }
                                     // ok:false / no own marker: map may be
                                     // off — let the HTML probe decide.
@@ -636,7 +639,7 @@ fn run_token_poll(app: AppHandle, generation: u64, tok: token::OverlayToken) {
                     if config.use_map_position && me.online == Some(true) {
                         if let Some((x_cm, y_cm)) = position {
                             log::debug!("islepilot overlay api: {x_cm:.0},{y_cm:.0} cm");
-                            pipeline::ingest_sample(&app, x_cm, y_cm, 0.0);
+                            ingest_selected_position(&app, x_cm, y_cm, 0.0);
                         }
                     }
                     publish(
@@ -732,6 +735,7 @@ pub fn start_login(app: &AppHandle, domain: String) -> Result<(), String> {
 
     if let Some(existing) = app.get_webview_window(LOGIN_WINDOW) {
         let _ = existing.set_focus();
+        let _ = app.emit(DINO_LOGIN_STARTED, "legacy");
         return Ok(());
     }
 
@@ -742,6 +746,7 @@ pub fn start_login(app: &AppHandle, domain: String) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     LOGIN_ACTIVE.store(true, Ordering::SeqCst);
+    let _ = app.emit(DINO_LOGIN_STARTED, "legacy");
 
     // Closing the window must end the wait IMMEDIATELY — polling for the
     // window's disappearance was too slow and could miss it entirely.
@@ -824,6 +829,7 @@ pub fn start_login(app: &AppHandle, domain: String) -> Result<(), String> {
 pub fn start_token_login(app: &AppHandle) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window(LOGIN_WINDOW) {
         let _ = existing.set_focus();
+        let _ = app.emit(DINO_LOGIN_STARTED, "token");
         return Ok(());
     }
     let url: tauri::Url = format!("{}/api/overlay/auth/steam", api::API_ORIGIN)
@@ -835,7 +841,9 @@ pub fn start_token_login(app: &AppHandle) -> Result<(), String> {
         .title("IslePilot — Steam")
         .inner_size(520.0, 760.0)
         .on_navigation(|nav_url| {
-            if nav_url.scheme() == "isle-overlay" {
+            // IslePilot has used both spellings in redirect links. Accepting
+            // either keeps the one-click flow automatic across deployments.
+            if matches!(nav_url.scheme(), "isle-overlay" | "theisle-overlay") {
                 let (mut sid, mut tok) = (None, None);
                 for (k, v) in nav_url.query_pairs() {
                     match k.as_ref() {
@@ -857,7 +865,13 @@ pub fn start_token_login(app: &AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    // Keep the auth window visible above the game and put it where the user
+    // expects it. Failure here is cosmetic; authentication can still run.
+    let _ = window.center();
+    let _ = window.set_focus();
+
     LOGIN_ACTIVE.store(true, Ordering::SeqCst);
+    let _ = app.emit(DINO_LOGIN_STARTED, "token");
 
     let close_app = app.clone();
     window.on_window_event(move |event| {
@@ -987,9 +1001,12 @@ pub fn manual_token(app: &AppHandle, raw: String) -> Result<(), String> {
 /// UI "cancel" button: stop waiting and close the login window if it is
 /// still around.
 pub fn cancel_login(app: &AppHandle) {
-    LOGIN_ACTIVE.store(false, Ordering::SeqCst);
+    let was_active = LOGIN_ACTIVE.swap(false, Ordering::SeqCst);
     if let Some(window) = app.get_webview_window(LOGIN_WINDOW) {
         let _ = window.close();
+    }
+    if was_active {
+        let _ = app.emit(DINO_LOGIN_FAILED, "cancelled");
     }
 }
 
@@ -1499,3 +1516,10 @@ mod tests {
 }
 
 
+
+// Không cho dữ liệu IslePilot ghi đè vị trí ERA đang được người dùng chọn.
+fn ingest_selected_position(app: &AppHandle, x: f64, y: f64, z: f64) {
+    let state = app.state::<AppState>();
+    let selected = settings::get_str(&state.settings.lock_safe(), &["position_source"], "era") == "islepilot";
+    if selected { pipeline::ingest_sample(app, x, y, z); }
+}
