@@ -114,10 +114,22 @@ Chi tiết: [`docs/WEB-COMPANION.md`](docs/WEB-COMPANION.md).
 
 ## 📥 Cài đặt
 
-1. Tải bản Windows từ [trang web](https://heyguys-dashboard.pages.dev/) và giải nén.
-2. Chạy `Hey-Guys-Overlay.exe` — giữ nguyên hai file DLL đi kèm.
-3. Bấm **Kết nối Steam** trên thanh điều hướng, đăng nhập một lần.
-4. Vào game, overlay tự hiện khi The Isle đang chạy.
+<div align="center">
+
+[![Tải về cho Windows](https://img.shields.io/badge/⬇_TẢI_VỀ_CHO_WINDOWS-Hey--Guys--Overlay.zip-a855b5?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/tailieutruongthanhb3dian-a11y/hey-guys-overlay/releases/latest/download/Hey-Guys-Overlay-Windows.zip)
+
+<sub>Không cần cài đặt · Windows 10/11 64-bit</sub>
+
+</div>
+
+1. Bấm nút **Tải về** ở trên.
+2. Chuột phải file ZIP → **Extract All…** (Giải nén tất cả) → **Extract**.
+3. Nhấp đúp `Hey-Guys-Overlay.exe` — giữ hai file `.dll` nằm cạnh.
+4. Bấm **Kết nối Steam**, đăng nhập một lần. Vào game là overlay tự hiện.
+
+> [!WARNING]
+> Nếu Windows hiện màn hình xanh **"Windows protected your PC"**: bấm **More info** → **Run anyway**.
+> App chưa có chữ ký số nên Windows cảnh báo, không phải virus.
 
 > [!TIP]
 > `Ctrl+K` mở bảng lệnh nhanh · `Ctrl+1…6` chuyển tab · `F5` hoặc `Ctrl+Alt+R` tải lại khi lỗi giao diện.
